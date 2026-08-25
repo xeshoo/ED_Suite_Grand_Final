@@ -1,0 +1,3605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, interactive-widget=overlays-content">
+<meta name="theme-color" content="#0B1929">
+<title>ER Airway Assistant</title>
+<link rel="manifest" href="../../manifest.json">
+<link rel="icon" href="../../icons/icon-192.png">
+<link rel="apple-touch-icon" href="../../icons/icon-192.png">
+<style>
+/* ==========================================================================
+   ER Airway Assistant — Phase 2  •  Premium Clinical UI
+   ========================================================================== */
+
+/* ---------- Design tokens ---------- */
+:root {
+  --bg:          #0B1929;
+  --bg-card:     #122338;
+  --bg-card-alt: #162B44;
+  --bg-overlay:  rgba(5,12,22,.88);
+  --surface:     #1A3350;
+  --border:      rgba(255,255,255,.08);
+  --text:        #E8EDF2;
+  --text-dim:    #8BA3BE;
+  --text-muted:  #5A7A99;
+  --accent:      #4FC3F7;
+  --accent-glow: rgba(79,195,247,.18);
+  --red:         #FF5252;
+  --red-bg:      rgba(255,82,82,.12);
+  --amber:       #FFB74D;
+  --amber-bg:    rgba(255,183,77,.12);
+  --green:       #66BB6A;
+  --green-bg:    rgba(102,187,106,.12);
+  --blue:        #42A5F5;
+  --blue-bg:     rgba(66,165,245,.12);
+  --radius:      14px;
+  --radius-sm:   8px;
+  --radius-xs:   6px;
+  --shadow:      0 2px 12px rgba(0,0,0,.35);
+  --shadow-lg:   0 8px 32px rgba(0,0,0,.5);
+  --transition:  .22s cubic-bezier(.4,0,.2,1);
+  --font:        'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono:   'JetBrains Mono', 'Fira Code', monospace;
+  --safe-top:    env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ---------- Reset & base ---------- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 15px; -webkit-text-size-adjust: 100%; }
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100dvh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.55;
+}
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 10%, rgba(79,195,247,.06), transparent),
+    radial-gradient(ellipse 60% 50% at 80% 90%, rgba(255,82,82,.04), transparent);
+  pointer-events: none; z-index: 0;
+}
+
+/* ---------- App bar ---------- */
+.appbar {
+  position: sticky; top: 0; z-index: 100;
+  display: flex; align-items: center; gap: 12px;
+  padding: calc(var(--safe-top) + 10px) 16px 10px;
+  background: rgba(11,25,41,.92);
+  backdrop-filter: blur(16px) saturate(1.4);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  border-bottom: 1px solid var(--border);
+}
+.appbar h1 {
+  flex: 1; font-size: 1.05rem; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  letter-spacing: -.01em;
+}
+.iconbtn {
+  background: none; border: none; color: var(--text);
+  font-size: 1.35rem; cursor: pointer; padding: 6px;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition);
+}
+.iconbtn:hover { background: rgba(255,255,255,.08); }
+.iconbtn:active { transform: scale(.92); }
+
+/* ---------- Main ---------- */
+main { position: relative; z-index: 1; padding: 12px 14px calc(var(--safe-bottom) + 80px); }
+
+/* ---------- Screen transitions ---------- */
+.screen { display: none; animation: fadeSlideIn .3s ease; }
+.screen.active { display: block; }
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- Cards ---------- */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: var(--shadow);
+  transition: box-shadow var(--transition);
+}
+.card:hover { box-shadow: var(--shadow-lg); }
+.card h3 {
+  font-size: .82rem; font-weight: 600; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: .06em;
+  margin-bottom: 10px;
+}
+
+/* ---------- Dashboard grid ---------- */
+.dash-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.dash-grid.three-col { grid-template-columns: repeat(3, 1fr); }
+.dash-grid.two-col   { grid-template-columns: repeat(2, 1fr); }
+
+.tile {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 22px 12px;
+  cursor: pointer;
+  transition: all var(--transition);
+  overflow: hidden;
+  font-size: .88rem; font-weight: 500; color: var(--text);
+}
+.tile::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,.03), transparent);
+  pointer-events: none;
+}
+.tile:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 20px var(--accent-glow);
+  transform: translateY(-2px);
+}
+.tile:active { transform: scale(.96); }
+.tile-ic { font-size: 1.8rem; line-height: 1; }
+.tile-red   { border-color: rgba(255,82,82,.25); }
+.tile-red:hover  { border-color: var(--red); box-shadow: 0 0 20px rgba(255,82,82,.15); }
+.tile-amber { border-color: rgba(255,183,77,.25); }
+.tile-amber:hover { border-color: var(--amber); box-shadow: 0 0 20px rgba(255,183,77,.15); }
+.tile-blue  { border-color: rgba(66,165,245,.25); }
+.tile-blue:hover  { border-color: var(--blue); box-shadow: 0 0 20px rgba(66,165,245,.15); }
+
+.dash-note {
+  font-size: .76rem; color: var(--text-muted);
+  text-align: center; padding: 0 8px; line-height: 1.5;
+}
+
+/* ---------- Chips / tags ---------- */
+.chiprow { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 6px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  font-size: .82rem; font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition);
+  color: var(--text-dim);
+}
+.chip:hover { border-color: var(--accent); color: var(--text); }
+.chip.active {
+  background: var(--accent-glow);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ---------- Inputs ---------- */
+input[type="number"], input[type="text"], select {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  padding: 10px 12px;
+  font-size: .92rem;
+  font-family: var(--font);
+  transition: border-color var(--transition), box-shadow var(--transition);
+  width: 100%;
+}
+input:focus, select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+input::placeholder { color: var(--text-muted); }
+
+.inline-inputs {
+  display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;
+}
+.inline-inputs input, .inline-inputs select { flex: 1; min-width: 80px; }
+
+.weight-row {
+  display: flex; align-items: center; gap: 10px;
+}
+.weight-row label { font-weight: 600; white-space: nowrap; }
+.weight-row input { max-width: 100px; }
+
+/* ---------- Switch ---------- */
+.switch {
+  appearance: none; -webkit-appearance: none;
+  width: 44px; height: 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  position: relative; cursor: pointer;
+  transition: background var(--transition);
+}
+.switch::after {
+  content: '';
+  position: absolute; top: 2px; left: 2px;
+  width: 18px; height: 18px;
+  background: var(--text-dim);
+  border-radius: 50%;
+  transition: all var(--transition);
+}
+.switch:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.switch:checked::after {
+  left: 22px;
+  background: #fff;
+}
+
+.settingrow {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 0;
+}
+.settingrow + .settingrow { border-top: 1px solid var(--border); }
+
+/* ---------- Buttons ---------- */
+.bigbtn {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 14px 28px;
+  border: none; border-radius: var(--radius);
+  font-size: .95rem; font-weight: 600;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: all var(--transition);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.bigbtn:active { transform: scale(.96); }
+.bigbtn.primary {
+  background: linear-gradient(135deg, var(--accent), #2196F3);
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(79,195,247,.3);
+}
+.bigbtn.primary:hover { box-shadow: 0 6px 24px rgba(79,195,247,.45); }
+.bigbtn.ghost {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+}
+.bigbtn.ghost:hover { border-color: var(--text-dim); color: var(--text); }
+.bigbtn.emergency {
+  background: linear-gradient(135deg, var(--red), #D32F2F);
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(255,82,82,.3);
+  animation: pulse-emergency 2s infinite;
+}
+@keyframes pulse-emergency {
+  0%, 100% { box-shadow: 0 4px 16px rgba(255,82,82,.3); }
+  50%      { box-shadow: 0 4px 28px rgba(255,82,82,.55); }
+}
+.bigbtn.small { padding: 10px 20px; font-size: .82rem; }
+.bigbtn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+
+.bigbtns { display: flex; gap: 10px; margin-top: 14px; }
+.bigbtns .bigbtn { flex: 1; }
+
+.act {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 10px 20px;
+  background: var(--accent-glow);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  color: var(--accent);
+  font-size: .85rem; font-weight: 600;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.act:hover { background: rgba(79,195,247,.25); }
+.act.ghost {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--text-dim);
+}
+.act.ghost:hover { border-color: var(--text-dim); }
+
+.btnrow { display: flex; gap: 10px; margin-bottom: 14px; }
+
+/* ---------- RSI timer bar ---------- */
+.rsi-timerbar {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  margin-bottom: 12px;
+}
+.rsi-clock {
+  font-family: var(--font-mono);
+  font-size: 2rem; font-weight: 700;
+  color: var(--accent);
+  letter-spacing: .02em;
+  min-width: 110px;
+}
+.rsi-delta {
+  font-size: .78rem; color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+/* ---------- RSI step card ---------- */
+.rsi-stepcard {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 12px;
+}
+.rsi-steplabel {
+  font-size: .72rem; font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: .08em;
+  margin-bottom: 4px;
+}
+.rsi-stepname {
+  font-size: 1.1rem; font-weight: 600;
+  margin-bottom: 10px;
+}
+
+/* Progress bar */
+.progressbar {
+  height: 4px;
+  background: var(--surface);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+.progressfill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), #2196F3);
+  border-radius: 2px;
+  transition: width .4s ease;
+}
+
+.rsi-next {
+  font-size: .78rem; color: var(--text-muted);
+}
+
+/* RSI step body */
+.rsi-stepbody { margin-bottom: 12px; }
+.rsi-stepbody .card { animation: fadeSlideIn .25s ease; }
+
+/* ---------- Checklist gate ---------- */
+.checklist-gate {
+  background: var(--bg-card);
+  border: 2px solid var(--amber);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 12px;
+  box-shadow: 0 0 24px rgba(255,183,77,.1);
+}
+.checklist-gate h3 {
+  color: var(--amber);
+  font-size: .9rem;
+  margin-bottom: 14px;
+  display: flex; align-items: center; gap: 8px;
+}
+.checklist-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background var(--transition);
+}
+.checklist-item:last-child { border-bottom: none; }
+.checklist-item:hover { background: rgba(255,255,255,.03); }
+.checklist-check {
+  width: 28px; height: 28px;
+  border: 2px solid var(--text-muted);
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1rem;
+  transition: all var(--transition);
+  flex-shrink: 0;
+}
+.checklist-item.checked .checklist-check {
+  background: var(--green);
+  border-color: var(--green);
+  color: #fff;
+}
+.checklist-label { font-size: .9rem; font-weight: 500; }
+.checklist-item.checked .checklist-label { color: var(--green); }
+
+.checklist-gate-locked {
+  text-align: center;
+  padding: 14px;
+  color: var(--amber);
+  font-size: .85rem;
+  font-weight: 500;
+}
+
+/* ---------- Decision tree nodes ---------- */
+.tree-node {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 10px;
+  position: relative;
+  animation: fadeSlideIn .3s ease;
+}
+.tree-node::before {
+  content: '';
+  position: absolute; left: 24px; top: -10px;
+  width: 2px; height: 10px;
+  background: var(--border);
+}
+.tree-node:first-child::before { display: none; }
+
+.tree-question {
+  font-size: .95rem; font-weight: 600;
+  margin-bottom: 12px;
+  color: var(--text);
+}
+.tree-options { display: flex; flex-direction: column; gap: 8px; }
+.tree-option {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition);
+  font-size: .88rem;
+}
+.tree-option:hover {
+  border-color: var(--accent);
+  background: var(--accent-glow);
+}
+.tree-option.selected {
+  border-color: var(--accent);
+  background: var(--accent-glow);
+  color: var(--accent);
+}
+.tree-option .tree-arrow {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-size: .8rem;
+}
+
+/* Color-coded tree outcomes */
+.tree-outcome {
+  padding: 14px;
+  border-radius: var(--radius-sm);
+  font-size: .88rem;
+  font-weight: 500;
+  margin-top: 8px;
+}
+.tree-outcome.green  { background: var(--green-bg); border: 1px solid rgba(102,187,106,.3); color: var(--green); }
+.tree-outcome.amber  { background: var(--amber-bg); border: 1px solid rgba(255,183,77,.3); color: var(--amber); }
+.tree-outcome.red    { background: var(--red-bg);   border: 1px solid rgba(255,82,82,.3);   color: var(--red); }
+.tree-outcome.blue   { background: var(--blue-bg);  border: 1px solid rgba(66,165,245,.3);  color: var(--blue); }
+
+/* ---------- LEMON score display ---------- */
+.lemon-score-display {
+  display: flex; align-items: center; gap: 14px;
+  padding: 16px;
+  background: var(--bg-card-alt);
+  border-radius: var(--radius);
+  margin-top: 12px;
+}
+.lemon-score-num {
+  font-size: 2.5rem; font-weight: 800;
+  font-family: var(--font-mono);
+  min-width: 60px; text-align: center;
+}
+.lemon-score-label {
+  font-size: .82rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .05em;
+}
+.lemon-score-rec {
+  font-size: .85rem;
+  margin-top: 2px;
+}
+.lemon-score-display.green .lemon-score-num { color: var(--green); }
+.lemon-score-display.amber .lemon-score-num { color: var(--amber); }
+.lemon-score-display.red   .lemon-score-num { color: var(--red); }
+
+/* ---------- Drug detail cards ---------- */
+.drug-detail {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 10px;
+}
+.drug-header {
+  display: flex; align-items: baseline; gap: 10px;
+  margin-bottom: 10px;
+}
+.drug-name {
+  font-size: 1.05rem; font-weight: 700;
+}
+.drug-dose {
+  font-family: var(--font-mono);
+  font-size: 1.1rem; font-weight: 700;
+  color: var(--accent);
+}
+.drug-meta {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+  font-size: .82rem;
+}
+.drug-meta dt {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.drug-meta dd { color: var(--text); }
+.drug-warn {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: var(--red-bg);
+  border: 1px solid rgba(255,82,82,.2);
+  border-radius: var(--radius-xs);
+  font-size: .8rem;
+  color: var(--red);
+}
+.drug-warn::before {
+  content: '\26A0 ';
+  font-weight: 700;
+}
+
+/* ---------- Timeline / event log ---------- */
+.timeline-drawer {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-top: 12px;
+}
+.timeline-drawer summary {
+  padding: 12px 16px;
+  font-size: .85rem; font-weight: 600;
+  cursor: pointer;
+  color: var(--text-dim);
+}
+.timeline-list { padding: 0 16px 14px; }
+
+.timeline-entry {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 8px 0;
+  border-left: 2px solid var(--border);
+  padding-left: 14px;
+  margin-left: 6px;
+  position: relative;
+  animation: fadeSlideIn .2s ease;
+}
+.timeline-entry::before {
+  content: '';
+  position: absolute; left: -5px; top: 12px;
+  width: 8px; height: 8px;
+  background: var(--accent);
+  border-radius: 50%;
+}
+.timeline-entry .tl-time {
+  font-family: var(--font-mono);
+  font-size: .78rem;
+  color: var(--accent);
+  white-space: nowrap;
+  min-width: 60px;
+}
+.timeline-entry .tl-event {
+  font-size: .85rem;
+  color: var(--text);
+}
+
+/* ---------- Dose table ---------- */
+.dosetable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .85rem;
+}
+.dosetable th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-muted);
+  font-size: .75rem;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  padding: 6px 8px 8px;
+  border-bottom: 1px solid var(--border);
+}
+.dosetable td {
+  padding: 8px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+.dosetable tr:last-child td { border-bottom: none; }
+.dosetable .dose-val {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--accent);
+}
+
+/* ---------- Checklist (pre-RSI) ---------- */
+.checklist {
+  list-style: none;
+}
+.checklist li {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: .9rem;
+}
+.checklist li:last-child { border-bottom: none; }
+.checklist .cl-icon { font-size: 1.1rem; }
+
+/* ---------- Flow diagram ---------- */
+.flow {
+  display: flex; flex-direction: column; gap: 0;
+}
+.flow-step {
+  position: relative;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 4px;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.flow-step:hover {
+  border-color: var(--accent);
+}
+.flow-arrow {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 1.2rem;
+  padding: 2px 0;
+  user-select: none;
+}
+.flow-connector {
+  width: 2px; height: 16px;
+  background: var(--border);
+  margin: 0 auto;
+}
+
+.flow-step .fs-title { font-weight: 600; font-size: .9rem; }
+.flow-step .fs-detail {
+  font-size: .8rem; color: var(--text-dim);
+  margin-top: 4px;
+  display: none;
+}
+.flow-step.expanded .fs-detail { display: block; }
+
+/* Branch visualization */
+.flow-branch {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+  margin: 8px 0;
+}
+.flow-branch .branch-yes,
+.flow-branch .branch-no {
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  font-size: .85rem; font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.flow-branch .branch-yes {
+  background: var(--green-bg);
+  border: 1px solid rgba(102,187,106,.3);
+  color: var(--green);
+}
+.flow-branch .branch-yes:hover { background: rgba(102,187,106,.2); }
+.flow-branch .branch-no {
+  background: var(--red-bg);
+  border: 1px solid rgba(255,82,82,.3);
+  color: var(--red);
+}
+.flow-branch .branch-no:hover { background: rgba(255,82,82,.2); }
+
+/* ---------- Ventilator preset cards ---------- */
+.vent-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.vent-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 20px var(--accent-glow);
+}
+.vent-card .vent-title {
+  font-weight: 700; font-size: .95rem;
+  margin-bottom: 6px;
+}
+.vent-card .vent-subtitle {
+  font-size: .78rem; color: var(--text-muted);
+}
+.vent-params {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 14px;
+  margin-top: 12px;
+  font-size: .82rem;
+}
+.vent-params dt { color: var(--text-muted); }
+.vent-params dd { font-weight: 600; color: var(--text); }
+
+/* ---------- Report ---------- */
+.report {
+  font-family: var(--font-mono);
+  font-size: .82rem;
+  white-space: pre-wrap;
+  line-height: 1.6;
+  color: var(--text-dim);
+  max-height: 60vh;
+  overflow-y: auto;
+}
+.report .report-section {
+  margin-bottom: 12px;
+}
+.report .report-header {
+  font-weight: 700;
+  color: var(--accent);
+  font-size: .85rem;
+}
+.report .report-line {
+  display: flex;
+  gap: 8px;
+}
+.report .report-label {
+  color: var(--text-muted);
+  min-width: 160px;
+}
+.report .report-value {
+  color: var(--text);
+  font-weight: 500;
+}
+
+/* ---------- Result display ---------- */
+.result {
+  font-family: var(--font-mono);
+  font-size: .92rem;
+  font-weight: 600;
+  color: var(--accent);
+  padding: 8px 0;
+  min-height: 28px;
+}
+
+/* ---------- Note ---------- */
+.note {
+  font-size: .8rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* ---------- Checkbox mini ---------- */
+.chk-mini { display: flex; flex-wrap: wrap; gap: 6px; }
+.chk-mini label {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 5px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  font-size: .78rem;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.chk-mini label:has(input:checked) {
+  background: var(--red-bg);
+  border-color: rgba(255,82,82,.3);
+  color: var(--red);
+}
+.chk-mini input[type="checkbox"] {
+  width: 14px; height: 14px;
+  accent-color: var(--red);
+}
+
+/* ---------- Overlay ---------- */
+.overlay {
+  position: fixed; inset: 0; z-index: 200;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg-overlay);
+  backdrop-filter: blur(8px);
+  animation: fadeIn .2s ease;
+}
+.overlay[hidden] { display: none; }
+.overlay-content {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 28px 24px;
+  max-width: 360px; width: 90%;
+  text-align: center;
+  box-shadow: var(--shadow-lg);
+  animation: scaleIn .25s ease;
+}
+.overlay-content h2 { margin-bottom: 10px; font-size: 1.1rem; }
+.overlay-content p { font-size: .85rem; color: var(--text-dim); margin-bottom: 18px; }
+.overlay-content .bigbtn { width: 100%; margin-bottom: 8px; }
+
+@keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes scaleIn { from { opacity: 0; transform: scale(.92); } to { opacity: 1; transform: scale(1); } }
+
+/* ---------- Saved cases ---------- */
+.case-item {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: .85rem;
+}
+.case-item:last-child { border-bottom: none; }
+.case-item .case-date { color: var(--text-muted); font-size: .78rem; }
+
+/* ---------- Responsive ---------- */
+@media (min-width: 600px) {
+  main { max-width: 540px; margin: 0 auto; }
+  .dash-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* ---------- Dark mode ---------- */
+.dark {
+  --bg:          #0a0f18;
+  --bg-card:     #111a28;
+  --bg-card-alt: #0d1520;
+  --surface:     #162030;
+  --border:      rgba(255,255,255,.1);
+  --text:        #d8dfe6;
+  --text-dim:    #7a8fa3;
+  --text-muted:  #4a6070;
+}
+body.dark { background: var(--bg); color: var(--text); }
+body.dark input, body.dark select,
+body.dark input[type="number"], body.dark input[type="text"] { background: var(--surface); color: var(--text); border-color: var(--border); }
+body.dark .overlay-content, body.dark .modal { background: var(--bg-card); }
+body.dark .card { background: var(--bg-card); border-color: var(--border); }
+body.dark .appbar { background: rgba(10,15,24,.92); }
+
+/* ---------- Scrollbar ---------- */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,.12);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.2); }
+
+/* ---------- Confirmation badge ---------- */
+.confirm-step {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 6px;
+  transition: all var(--transition);
+}
+.confirm-step.done {
+  background: var(--green-bg);
+  border-color: rgba(102,187,106,.3);
+}
+.confirm-step .cs-num {
+  width: 24px; height: 24px;
+  background: var(--border);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .72rem; font-weight: 700;
+  flex-shrink: 0;
+}
+.confirm-step.done .cs-num {
+  background: var(--green);
+  color: #fff;
+}
+.confirm-step .cs-text { font-size: .85rem; }
+
+/* ---------- Attempt counter ---------- */
+.attempt-counter {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px;
+  background: var(--bg-card-alt);
+  border-radius: var(--radius-sm);
+  margin-bottom: 10px;
+}
+.attempt-counter .ac-label {
+  font-size: .82rem; color: var(--text-muted);
+  font-weight: 600;
+}
+.attempt-counter .ac-num {
+  font-size: 1.5rem; font-weight: 800;
+  font-family: var(--font-mono);
+  color: var(--amber);
+}
+
+/* ---------- Info row ---------- */
+.info-row {
+  display: flex; justify-content: space-between;
+  padding: 6px 0;
+  font-size: .85rem;
+  border-bottom: 1px solid var(--border);
+}
+.info-row:last-child { border-bottom: none; }
+.info-row .info-label { color: var(--text-muted); }
+.info-row .info-value { font-weight: 600; }
+</style>
+</head>
+<body>
+
+<!-- ============ TOP APP BAR ============ -->
+<header class="appbar">
+  <button id="backBtn" class="iconbtn" aria-label="Back" hidden>&#8592;</button>
+  <a href="../../index.html" class="iconbtn" aria-label="Home" style="text-decoration:none">&#8962;</a>
+  <h1 id="screenTitle">ER Airway Assistant</h1>
+  <button id="settingsBtn" class="iconbtn" aria-label="Settings">&#9881;</button>
+</header>
+
+<main id="app">
+
+  <!-- ============ DASHBOARD ============ -->
+  <section id="screen-dashboard" class="screen active">
+    <div class="dash-grid">
+      <button class="tile tile-red" data-nav="rsi" data-mode="adult">
+        <span class="tile-ic">&#129517;</span><span>Adult RSI</span>
+      </button>
+      <button class="tile tile-blue" data-nav="rsi" data-mode="child">
+        <span class="tile-ic">&#128118;</span><span>Pediatric RSI</span>
+      </button>
+      <button class="tile" data-nav="calculator">
+        <span class="tile-ic">&#128202;</span><span>Drug Calculator</span>
+      </button>
+      <button class="tile tile-amber" data-nav="failed">
+        <span class="tile-ic">&#9888;</span><span>Failed Airway</span>
+      </button>
+      <button class="tile tile-red" data-nav="cric">
+        <span class="tile-ic">&#128717;</span><span>Cricothyrotomy</span>
+      </button>
+      <button class="tile" data-nav="ventilator">
+        <span class="tile-ic">&#128168;</span><span>Ventilator</span>
+      </button>
+      <button class="tile" data-nav="calculators">
+        <span class="tile-ic">&#128207;</span><span>Airway Calculators</span>
+      </button>
+      <button class="tile" data-nav="reports">
+        <span class="tile-ic">&#128203;</span><span>Case Reports</span>
+      </button>
+    </div>
+    <p class="dash-note">Reference tool to support clinical judgment — not a substitute for it. Verify all doses against local protocol.</p>
+  </section>
+
+  <!-- ============ RSI WORKFLOW (branching decision tree) ============ -->
+  <section id="screen-rsi" class="screen">
+    <div class="rsi-timerbar">
+      <div class="rsi-clock" id="rsiClock">00:00</div>
+      <div class="rsi-delta" id="rsiDelta"></div>
+    </div>
+    <div class="rsi-stepcard">
+      <div class="rsi-steplabel">Current step</div>
+      <div class="rsi-stepname" id="rsiStepName">—</div>
+      <div class="progressbar"><div class="progressfill" id="rsiProgressFill"></div></div>
+      <div class="rsi-next">Next: <span id="rsiNextName">—</span></div>
+    </div>
+
+    <div id="rsiStepBody" class="rsi-stepbody"></div>
+
+    <div class="bigbtns">
+      <button id="rsiBack" class="bigbtn ghost">BACK</button>
+      <button id="rsiNext" class="bigbtn primary">NEXT</button>
+    </div>
+    <button id="rsiEmergency" class="bigbtn emergency">EMERGENCY</button>
+
+    <details class="timeline-drawer">
+      <summary>Timeline & Event Log</summary>
+      <div id="rsiTimelineList" class="timeline-list"></div>
+    </details>
+  </section>
+
+  <!-- ============ DRUG CALCULATOR (standalone) ============ -->
+  <section id="screen-calculator" class="screen">
+    <div class="card">
+      <h3>Patient category</h3>
+      <div id="calcCategoryChips" class="chiprow"></div>
+      <div id="calcCategoryNote" class="note"></div>
+    </div>
+    <div class="card">
+      <div class="weight-row">
+        <label for="calcWeight">Weight</label>
+        <input type="number" id="calcWeight" min="0" step="0.1" placeholder="kg">
+        <span>kg</span>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Sedatives / Induction</h3>
+      <table class="dosetable" id="calcSedTable"></table>
+    </div>
+    <div class="card">
+      <h3>Neuromuscular Blockers</h3>
+      <table class="dosetable" id="calcNmbTable"></table>
+    </div>
+    <div class="card">
+      <h3>Post-Intubation Infusions</h3>
+      <table class="dosetable" id="calcInfTable"></table>
+    </div>
+  </section>
+
+  <!-- ============ FAILED AIRWAY (interactive algorithm) ============ -->
+  <section id="screen-failed" class="screen">
+    <p class="note">Interactive decision tree — tap to branch.</p>
+    <div id="failedFlow" class="flow"></div>
+  </section>
+
+  <!-- ============ CRICOTHYROTOMY ============ -->
+  <section id="screen-cric" class="screen">
+    <div class="rsi-timerbar">
+      <div class="rsi-clock" id="cricClock">00:00</div>
+      <button id="cricStart" class="bigbtn primary small">START</button>
+    </div>
+    <div id="cricFlow" class="flow"></div>
+  </section>
+
+  <!-- ============ VENTILATOR PRESETS ============ -->
+  <section id="screen-ventilator" class="screen">
+    <p class="note">Evidence-based presets — tap for details.</p>
+    <div id="ventGrid" class="dash-grid two-col"></div>
+    <div id="ventDetail" class="card" hidden></div>
+  </section>
+
+  <!-- ============ AIRWAY CALCULATORS ============ -->
+  <section id="screen-calculators" class="screen">
+    <div class="card">
+      <h3>Ideal / Predicted Body Weight</h3>
+      <div class="inline-inputs">
+        <input type="number" id="cHeight" placeholder="Height cm">
+        <select id="cSex"><option value="male">Male</option><option value="female">Female</option></select>
+      </div>
+      <div class="result" id="cIBWOut">—</div>
+    </div>
+    <div class="card">
+      <h3>Tube Size & Depth</h3>
+      <div class="inline-inputs">
+        <input type="number" id="cAge" placeholder="Age (years, blank = adult)">
+      </div>
+      <div class="result" id="cTubeOut">—</div>
+    </div>
+    <div class="card">
+      <h3>LMA Size</h3>
+      <div class="inline-inputs">
+        <input type="number" id="cLmaWeight" placeholder="Weight kg">
+      </div>
+      <div class="result" id="cLmaOut">—</div>
+    </div>
+    <div class="card">
+      <h3>Difficult Airway Score (LEMON)</h3>
+      <div id="cDASFlags" class="chk-mini"></div>
+      <div class="result" id="cDASOut"></div>
+    </div>
+    <div class="card">
+      <h3>Shock Index & MAP</h3>
+      <div class="inline-inputs">
+        <input type="number" id="cHR" placeholder="HR">
+        <input type="number" id="cSBP" placeholder="SBP">
+        <input type="number" id="cDBP" placeholder="DBP">
+      </div>
+      <div class="result" id="cShockOut">—</div>
+    </div>
+    <div class="card">
+      <h3>Vasopressor Infusion Rate</h3>
+      <div id="cPressorChips" class="chiprow"></div>
+      <div class="inline-inputs" style="margin-top:8px">
+        <input type="number" id="cPressorWeight" placeholder="Weight kg">
+        <input type="number" id="cPressorConc" placeholder="Conc. mg/mL">
+      </div>
+      <div class="result" id="cPressorOut">—</div>
+    </div>
+  </section>
+
+  <!-- ============ CASE REPORTS ============ -->
+  <section id="screen-reports" class="screen">
+    <div id="reportOut" class="card report"></div>
+    <div class="btnrow">
+      <button id="reportSave" class="act">Save Case</button>
+      <button id="reportCopy" class="act">Copy</button>
+      <button id="reportPrint" class="act ghost">Print / PDF</button>
+      <button id="reportWord" class="act ghost">Word</button>
+    </div>
+    <div class="card">
+      <h3>Saved Cases</h3>
+      <div id="savedCasesList" class="note"></div>
+    </div>
+  </section>
+
+  <!-- ============ SETTINGS ============ -->
+  <section id="screen-settings" class="screen">
+    <div class="card">
+      <div class="settingrow"><span>Dark mode</span><input type="checkbox" id="setDark" class="switch"></div>
+      <div class="settingrow"><span>Voice guidance</span><input type="checkbox" id="setVoice" class="switch" checked></div>
+      <div class="settingrow"><span>Vibration alerts</span><input type="checkbox" id="setVibrate" class="switch" checked></div>
+    </div>
+    <div class="card">
+      <h3>Install this app</h3>
+      <p class="note">On Android Chrome: menu (⋮) → "Add to Home screen" / "Install app". Requires HTTPS.</p>
+      <button id="installBtn" class="act" hidden>Install now</button>
+    </div>
+    <div class="card">
+      <h3>About</h3>
+      <p class="note">ER Airway Assistant v2.0<br>
+      Clinical reference and workflow tool for RSI, failed airway, and cricothyrotomy.<br>
+      Not a substitute for institutional protocol or clinical judgment.</p>
+    </div>
+  </section>
+
+</main>
+
+<!-- ============ EMERGENCY OVERLAY ============ -->
+<div id="emergencyOverlay" class="overlay" hidden>
+  <div class="overlay-content">
+    <h2>Failed Airway / Emergency</h2>
+    <p>Jump to the failed airway algorithm or resume the current RSI.</p>
+    <button id="emgToFailed" class="bigbtn emergency">Go to Failed Airway</button>
+    <button id="emgResume" class="bigbtn ghost">Resume RSI</button>
+  </div>
+</div>
+
+<script>
+/* ==========================================================================
+   DATA.JS — All clinical data, drug info, ventilator presets, LEMON criteria
+   Edit here to change doses, timelines, presets — flows through every screen.
+   ========================================================================== */
+
+"use strict";
+
+const DATA = {
+
+  /* ---------- LEMON difficult airway assessment ---------- */
+  lemon: {
+    external: [
+      { id: "large_tongue",    label: "Large tongue" },
+      { id: "short_neck",      label: "Short, thick neck" },
+      { id: "limited_mouth",   label: "Limited mouth opening (<3 cm)" },
+      { id: "dentition",       label: "Poor dentition / prominent incisors" },
+      { id: "facial_hair",     label: "Facial hair (beard)" },
+      { id: "obesity",         label: "Obesity (BMI >30)" },
+    ],
+    look: [
+      { id: "mallampati_3_4",  label: "Mallampati III–IV" },
+      { id: "macroglossia",    label: "Macroglossia" },
+      { id: "uvula",           label: "Uvula not visible" },
+    ],
+    evaluate_3_3: [
+      { id: "interincisor",    label: "Inter-incisor distance <3 finger-breadths" },
+      { id: "thyromental",     label: "Thyromental distance <3 finger-breadths" },
+    ],
+    mallampati: [
+      { id: "mallampati",      label: "Mallampati class ≥III" },
+    ],
+    neck: [
+      { id: "neck_mobility",   label: "Limited neck mobility (cervical collar, arthritis)" },
+    ],
+    obstruction: [
+      { id: "airway_obstruction", label: "Airway obstruction (tumor, epiglottitis, trauma)" },
+      { id: "stridor",           label: "Stridor at rest" },
+    ],
+    scoring: {
+      green: { max: 1, label: "Low risk", rec: "Standard RSI approach", color: "green" },
+      amber: { min: 2, max: 3, label: "Moderate risk", rec: "Senior review — consider video laryngoscopy, awake look", color: "amber" },
+      red:   { min: 4, max: 99, label: "High risk", rec: "Awake airway strategy — consider fiberoptic / surgical standby", color: "red" },
+    },
+  },
+
+  /* ---------- Pre-RSI checklist (challenge-response) ---------- */
+  preRSIChecklist: [
+    { id: "monitor",    label: "Monitoring attached?",           icon: "📊" },
+    { id: "suction",    label: "Suction on & working?",          icon: "🫧" },
+    { id: "oxygen",     label: "Oxygen pre-oxygenating?",        icon: "💨" },
+    { id: "bougie",     label: "Bougie / stylet ready?",         icon: "🔧" },
+    { id: "cric_kit",   label: "Cricothyrotomy kit at bedside?", icon: "🔪" },
+    { id: "drugs",      label: "All drugs drawn up?",            icon: "💉" },
+    { id: "capno",      label: "Capnography connected?",         icon: "📈" },
+    { id: "assistant",  label: "Assistant briefed & ready?",     icon: "👤" },
+    { id: "plan_b",     label: "Plan B discussed?",              icon: "📋" },
+    { id: "position",   label: "Patient positioned (ear-to-sternal notch)?", icon: "🛏️" },
+  ],
+
+  /* ---------- RSI workflow steps with branching ---------- */
+  rsiSteps: {
+    adult: [
+      {
+        id: "preparation",
+        name: "Preparation",
+        checklist: true,  // gates on preRSIChecklist
+        content: "Complete the airway checklist before proceeding.",
+      },
+      {
+        id: "preoxygenation",
+        name: "Pre-oxygenation",
+        content: "3 minutes of 100% O₂ via NRB, or 8 vital capacity breaths.",
+        decision: {
+          question: "Is pre-oxygenation adequate? (SpO₂ ≥95%, end-tidal O₂ ≥90%)",
+          yes: { next: "induction", label: "Yes — Continue RSI" },
+          no: {
+            label: "No — Inadequate",
+            branches: [
+              { id: "niv", label: "Try NIV (CPAP/BiPAP)", next: "induction", note: "Reassess SpO₂ after 2 min NIV" },
+              { id: "bvm", label: "BVM ventilation", next: "induction", note: "Two-person BVM with OPA/NPA" },
+              { id: "dsi", label: "Delayed Sequence Intubation", next: "induction", note: "Ketamine sedation for toleration of pre-oxygenation" },
+            ],
+          },
+        },
+      },
+      {
+        id: "induction",
+        name: "Induction & Paralysis",
+        drugChoice: true,
+        content: "Push sedative agent, wait for onset (loss of eyelash reflex), then push paralytic.",
+        drugSequence: ["sedative", "paralytic"],
+      },
+      {
+        id: "wait_paralysis",
+        name: "Wait for Paralysis",
+        timer: { duration: 60, label: "Wait for optimal intubating conditions" },
+        content: "Monitor for fasciculations to cease. Do NOT attempt laryngoscopy until paralysis is optimal.",
+      },
+      {
+        id: "laryngoscopy",
+        name: "Laryngoscopy",
+        content: "Insert laryngoscope, visualize cords. Record Cormack-Lehane grade.",
+        attemptTracking: true,
+        fields: [
+          { id: "cl_grade", label: "Cormack-Lehane Grade", type: "select", options: ["I", "II", "III", "IV"] },
+          { id: "view_pct", label: "% Glottic Opening (POGO)", type: "number", suffix: "%" },
+          { id: "bougie_used", label: "Bougie used?", type: "toggle" },
+        ],
+      },
+      {
+        id: "intubation",
+        name: "Endotracheal Intubation",
+        content: "Insert ETT, inflate cuff, confirm placement immediately.",
+        fields: [
+          { id: "ett_size", label: "ETT size (mm)", type: "number" },
+          { id: "ett_depth", label: "ETT depth (cm at teeth)", type: "number" },
+        ],
+      },
+      {
+        id: "confirmation",
+        name: "Tube Confirmation",
+        content: "Confirm ETT placement using the hierarchy below. Capnography is the gold standard.",
+        confirmSteps: [
+          { id: "etco2",       label: "Continuous waveform ETCO₂ (gold standard)", primary: true },
+          { id: "chest_rise",  label: "Bilateral chest rise" },
+          { id: "breath_sounds", label: "Bilateral breath sounds" },
+          { id: "no_epigastric", label: "No epigastric sounds" },
+          { id: "tube_depth",  label: "Tube depth appropriate" },
+          { id: "cxr",         label: "Chest X-ray ordered (later confirmation)" },
+        ],
+      },
+      {
+        id: "post_intubation",
+        name: "Post-Intubation",
+        content: "Secure tube, connect to ventilator, start sedation infusion, order CXR.",
+        postIntubation: true,
+      },
+    ],
+    child: [
+      {
+        id: "preparation",
+        name: "Preparation",
+        checklist: true,
+        content: "Complete the airway checklist. Verify weight-based dosing. Have uncuffed AND cuffed ETT ready.",
+      },
+      {
+        id: "preoxygenation",
+        name: "Pre-oxygenation",
+        content: "3 minutes of 100% O₂. Use appropriately sized face mask. Avoid gastric insufflation.",
+        decision: {
+          question: "Is pre-oxygenation adequate?",
+          yes: { next: "induction", label: "Yes — Continue" },
+          no: {
+            label: "No — Inadequate",
+            branches: [
+              { id: "bvm_ped", label: "BVM with PEEP valve", next: "induction" },
+              { id: "niv_ped", label: "NIV trial", next: "induction" },
+            ],
+          },
+        },
+      },
+      {
+        id: "induction",
+        name: "Induction & Paralysis",
+        drugChoice: true,
+        content: "Weight-based dosing. Atropine pretreatment recommended <1 year or if succinylcholine used.",
+        drugSequence: ["atropine_optional", "sedative", "paralytic"],
+      },
+      {
+        id: "wait_paralysis",
+        name: "Wait for Paralysis",
+        timer: { duration: 60, label: "Wait for optimal conditions" },
+        content: "Pediatric onset may be slightly faster. Monitor for fasciculations.",
+      },
+      {
+        id: "laryngoscopy",
+        name: "Laryngoscopy",
+        content: "Straight blade (Miller) preferred <2 years. Cuffed ETT acceptable from term neonate.",
+        attemptTracking: true,
+        fields: [
+          { id: "cl_grade", label: "Cormack-Lehane Grade", type: "select", options: ["I", "II", "III", "IV"] },
+          { id: "bougie_used", label: "Bougie used?", type: "toggle" },
+        ],
+      },
+      {
+        id: "intubation",
+        name: "ET Intubation",
+        content: "Insert ETT, inflate cuff gently if cuffed. Confirm placement.",
+        fields: [
+          { id: "ett_size", label: "ETT size (mm)", type: "number" },
+          { id: "ett_depth", label: "ETT depth (cm at lip)", type: "number" },
+        ],
+      },
+      {
+        id: "confirmation",
+        name: "Tube Confirmation",
+        content: "Same confirmation hierarchy. ETCO₂ is essential.",
+        confirmSteps: [
+          { id: "etco2",       label: "Continuous waveform ETCO₂", primary: true },
+          { id: "chest_rise",  label: "Bilateral chest rise" },
+          { id: "breath_sounds", label: "Bilateral breath sounds" },
+          { id: "no_epigastric", label: "No epigastric sounds" },
+          { id: "tube_depth",  label: "Tube depth appropriate" },
+          { id: "cxr",         label: "Chest X-ray ordered" },
+        ],
+      },
+      {
+        id: "post_intubation",
+        name: "Post-Intubation",
+        content: "Secure tube, connect to ventilator, sedation infusion, CXR.",
+        postIntubation: true,
+      },
+    ],
+  },
+
+  /* ---------- Drugs with enhanced info ---------- */
+  drugs: {
+    sedative: {
+      label: "Sedatives / Induction Agents",
+      agents: [
+        {
+          id: "ketamine",
+          name: "Ketamine",
+          dosePerKg: { adult: 1.5, child: 2 },
+          unit: "mg",
+          route: "IV",
+          onset: "30 seconds",
+          duration: "10–15 min",
+          maxDose: 150,
+          contraindications: [
+            "Uncontrolled hypertension",
+            "Aortic dissection",
+            "Severe ischemic heart disease",
+            "Raised intracranial pressure (relative)",
+            "Known hypersensitivity",
+          ],
+          warnings: "Increases HR, BP, secretions. Consider glycopyrrolate for secretions. Emergence reactions reduced with benzodiazepine co-administration.",
+          category: "dissociative",
+        },
+        {
+          id: "propofol",
+          name: "Propofol",
+          dosePerKg: { adult: 1.5, child: 2.5 },
+          unit: "mg",
+          route: "IV",
+          onset: "15–30 seconds",
+          duration: "5–10 min",
+          maxDose: 200,
+          contraindications: [
+            "Hemodynamic instability",
+            "Egg/soy allergy (some formulations)",
+            "Severe hypovolemia",
+          ],
+          warnings: "Causes hypotension — reduce dose in elderly, shocked patients. No analgesic effect. Consider co-induction with fentanyl.",
+          category: "sedative-hypnotic",
+        },
+        {
+          id: "etomidate",
+          name: "Etomidate",
+          dosePerKg: { adult: 0.3, child: 0.3 },
+          unit: "mg",
+          route: "IV",
+          onset: "15–30 seconds",
+          duration: "3–5 min",
+          maxDose: 30,
+          contraindications: [
+            "Known hypersensitivity",
+            "Adrenal insufficiency (relative — single dose generally safe)",
+          ],
+          warnings: "Hemodynamically neutral — good for shocked patients. Single dose only (adrenal suppression with repeated doses). Myoclonus common — pretreat with fentanyl to reduce.",
+          category: "sedative-hypnotic",
+        },
+        {
+          id: "midazolam",
+          name: "Midazolam",
+          dosePerKg: { adult: 0.1, child: 0.1 },
+          unit: "mg",
+          route: "IV",
+          onset: "30–60 seconds",
+          duration: "15–30 min",
+          maxDose: 10,
+          contraindications: [
+            "Severe respiratory depression (without ventilation support)",
+            "Acute narrow-angle glaucoma",
+          ],
+          warnings: "Weaker induction agent — often used as co-induction. Dose reduce in elderly, hepatic impairment. Flumazenil is reversal agent.",
+          category: "benzodiazepine",
+        },
+        {
+          id: "fentanyl",
+          name: "Fentanyl",
+          dosePerKg: { adult: 1.5, child: 1.5 },
+          unit: "mcg",
+          route: "IV",
+          onset: "30–60 seconds",
+          duration: "30–60 min",
+          maxDose: 150,
+          contraindications: [
+            "Known hypersensitivity",
+            "Severe respiratory depression (without ventilation)",
+          ],
+          warnings: "Use as co-induction agent (blunts sympathetic response). Can cause chest wall rigidity at high doses. Respiratory depression — ensure ventilation capability.",
+          category: "opioid",
+        },
+      ],
+    },
+    paralytic: {
+      label: "Neuromuscular Blockers",
+      agents: [
+        {
+          id: "rocuronium",
+          name: "Rocuronium",
+          dosePerKg: { adult: 1.2, child: 1.2 },
+          unit: "mg",
+          route: "IV",
+          onset: "45–60 seconds",
+          duration: "45–70 min",
+          maxDose: 120,
+          contraindications: [
+            "Known hypersensitivity",
+          ],
+          warnings: "First-line paralytic for RSI. Sugammadex provides complete reversal (16 mg/kg). Prefer over succinylcholine in most situations.",
+          category: "non-depolarizing",
+        },
+        {
+          id: "succinylcholine",
+          name: "Succinylcholine",
+          dosePerKg: { adult: 1.5, child: 2 },
+          unit: "mg",
+          route: "IV",
+          onset: "30–60 seconds",
+          duration: "5–10 min",
+          maxDose: 150,
+          contraindications: [
+            "Hyperkalemia (K⁺ >5.5)",
+            "Burns >24 hours old",
+            "Crush injury >24 hours old",
+            "Denervation injury >24 hours old",
+            "Prolonged immobilization",
+            "Personal/family history of malignant hyperthermia",
+            "Myopathy / muscular dystrophy",
+            "Penetrating eye injury (relative)",
+          ],
+          warnings: "Fasciculations common — pretreat with rocuronium 0.06 mg/kg (defasciculating dose). Risk of hyperkalemia in susceptible patients. Short duration — have repeat dose or alternative ready if first attempt fails.",
+          category: "depolarizing",
+        },
+      ],
+    },
+    atropine_optional: {
+      label: "Atropine (Pediatric Pretreatment)",
+      agents: [
+        {
+          id: "atropine",
+          name: "Atropine",
+          dosePerKg: { adult: 0, child: 0.02 },
+          unit: "mg",
+          route: "IV",
+          onset: "1–2 min",
+          duration: "30–60 min",
+          maxDose: 0.5,
+          minDose: 0.1,
+          contraindications: [
+            "Known hypersensitivity",
+          ],
+          warnings: "Recommended for children <1 year, or when succinylcholine used. Prevents bradycardia. Minimum dose 0.1 mg.",
+          category: "anticholinergic",
+        },
+      ],
+    },
+    post_intubation: {
+      label: "Post-Intubation Infusions",
+      agents: [
+        {
+          id: "propofol_inf",
+          name: "Propofol infusion",
+          doseRange: "5–50 mcg/kg/min",
+          onset: "Immediate",
+          duration: "Short-acting",
+          contraindications: ["Hemodynamic instability", "Propofol infusion syndrome (prolonged high-dose >48h)"],
+          warnings: "Titrate to RASS target. Monitor triglycerides if >48h. Consider enteral sedation to wean.",
+          category: "sedative",
+        },
+        {
+          id: "midazolam_inf",
+          name: "Midazolam infusion",
+          doseRange: "0.02–0.1 mg/kg/hr",
+          onset: "1–3 min",
+          duration: "Short-acting",
+          contraindications: ["Severe hepatic impairment"],
+          warnings: "Accumulates with prolonged use — consider daily sedation vacation. Renal/hepatic dose adjustment.",
+          category: "benzodiazepine",
+        },
+        {
+          id: "fentanyl_inf",
+          name: "Fentanyl infusion",
+          doseRange: "25–100 mcg/hr",
+          onset: "Immediate",
+          duration: "Short-acting",
+          contraindications: ["Opioid sensitivity"],
+          warnings: "For analgesia. Ensure sedation covers pain. Consider multimodal analgesia.",
+          category: "opioid",
+        },
+        {
+          id: "cisatracurium_inf",
+          name: "Cisatracurium infusion",
+          doseRange: "1–3 mcg/kg/min",
+          onset: "2–3 min",
+          duration: "Intermediate",
+          contraindications: ["Known hypersensitivity"],
+          warnings: "Only for ventilator dyssynchrony not resolved by sedation. Train-of-four monitoring required. Daily interruption recommended.",
+          category: "paralytic",
+        },
+      ],
+    },
+  },
+
+  /* ---------- Failed airway algorithm (decision tree) ---------- */
+  failedAirway: {
+    root: {
+      id: "cannot_intubate",
+      question: "Cannot Intubate",
+      children: [
+        {
+          id: "can_oxygenate",
+          question: "Can you oxygenate? (SpO₂ >90%)",
+          yes: {
+            id: "ci_co_yes",
+            label: "YES — CICO resolved",
+            action: "Supraglottic airway (LMA/i-gel)",
+            steps: [
+              "Insert supraglottic airway (LMA / i-gel)",
+              "Confirm ventilation with ETCO₂",
+              "If effective: use as bridge — plan definitive airway",
+              "If ineffective: reposition, try second SGA",
+              "If still ineffective: treat as CICO",
+            ],
+            outcome: "green",
+          },
+          no: {
+            id: "ci_co_no",
+            label: "NO — CICO (Cannot Intubate, Cannot Oxygenate)",
+            action: "Emergency front-of-neck access",
+            steps: [
+              "Declare: 'CICO — proceeding to surgical cricothyrotomy'",
+              "Position: extend neck, identify cricothyroid membrane",
+              "Stabilize larynx with non-dominant hand",
+              "Horizontal skin incision through membrane",
+              "Dilate with forceps or bougie-guided technique",
+              "Insert 6.0 cuffed ETT or tracheostomy tube",
+              "Confirm with ETCO₂",
+              "Ventilate and secure",
+            ],
+            checklist: [
+              { id: "scalpel", label: "Scalpel (#10 or #20 blade)" },
+              { id: "bougie_cric", label: "Bougie" },
+              { id: "ett_6", label: "6.0 ETT or tracheostomy tube" },
+              { id: "syringe", label: "10 mL syringe" },
+              { id: "connector", label: "ETT connector / adapter" },
+            ],
+            outcome: "red",
+          },
+        },
+      ],
+    },
+  },
+
+  /* ---------- Ventilator presets (evidence-based) ---------- */
+  ventilatorPresets: [
+    {
+      id: "ards",
+      name: "ARDS",
+      subtitle: "Acute Respiratory Distress Syndrome",
+      params: {
+        mode: "Volume Control (AC/VC)",
+        TV: "6 mL/kg IBP (lung protective)",
+        RR: "20–30 bpm",
+        PEEP: "10–15 cmH₂O (per ARDSNet table)",
+        "FiO₂": "Titrate to SpO₂ 88–95%",
+        trigger: "Flow trigger 1–2 L/min",
+        inspiratory_flow: "60 L/min (square waveform)",
+        ie_ratio: "1:1.5–1:2",
+        plateau: "≤30 cmH₂O target",
+      },
+      notes: "Prone positioning if P/F <150. Neuromuscular blockade if P/F <150 in first 48h. Conservative fluid strategy.",
+    },
+    {
+      id: "asthma",
+      name: "Asthma",
+      subtitle: "Status asthmaticus / bronchospasm",
+      params: {
+        mode: "Volume Control (AC/VC)",
+        TV: "6–8 mL/kg IBP",
+        RR: "10–14 bpm (allow permissive hypercapnia)",
+        PEEP: "0–5 cmH₂O (auto-PEEP risk)",
+        "FiO₂": "Titrate to SpO₂ >92%",
+        trigger: "Flow trigger 2 L/min",
+        inspiratory_flow: "80–100 L/min (high flow for short I-time)",
+        ie_ratio: "1:3–1:4 (long expiration)",
+        plateau: "Monitor for auto-PEEP",
+      },
+      notes: "Permissive hypercapnia acceptable. Avoid auto-PEEP — disconnect and decompress if dynamic hyperinflation. Bronchodilators IV and inhaled.",
+    },
+    {
+      id: "copd",
+      name: "COPD",
+      subtitle: "Acute exacerbation / acute-on-chronic",
+      params: {
+        mode: "Volume Control (AC/VC)",
+        TV: "6–8 mL/kg IBP",
+        RR: "12–16 bpm",
+        PEEP: "5–8 cmH₂O (match auto-PEEP)",
+        "FiO₂": "Titrate to SpO₂ 88–92% (avoid over-oxygenation)",
+        trigger: "Flow trigger 1–2 L/min",
+        inspiratory_flow: "60 L/min",
+        ie_ratio: "1:2.5–1:3",
+        plateau: "Monitor for auto-PEEP",
+      },
+      notes: "Target permissive hypoxemia (88–92%). Watch for auto-PEEP. Bicarbonate infusion if pH <7.2.",
+    },
+    {
+      id: "tbi",
+      name: "TBI",
+      subtitle: "Traumatic Brain Injury",
+      params: {
+        mode: "Volume Control (AC/VC)",
+        TV: "6–8 mL/kg IBP",
+        RR: "16–20 bpm (target PaCO₂ 35–40 mmHg)",
+        PEEP: "5–8 cmH₂O",
+        "FiO₂": "Titrate to SpO₂ >95%, PaO₂ >100 mmHg",
+        trigger: "Flow trigger 1–2 L/min",
+        inspiratory_flow: "60 L/min",
+        ie_ratio: "1:2",
+        plateau: "≤30 cmH₂O",
+      },
+      notes: "Head of bed ≥30°. Avoid hypoxia and hypotension (SBP >100 mmHg). ICP management per neuro protocol. Avoid hyperthermia.",
+    },
+    {
+      id: "pulm_edema",
+      name: "Pulmonary Edema",
+      subtitle: "Cardiogenic / fluid overload",
+      params: {
+        mode: "Volume Control (AC/VC)",
+        TV: "6–8 mL/kg IBP",
+        RR: "16–20 bpm",
+        PEEP: "8–15 cmH₂O (therapeutic PEEP)",
+        "FiO₂": "Titrate to SpO₂ >92%",
+        trigger: "Flow trigger 1–2 L/min",
+        inspiratory_flow: "60 L/min",
+        ie_ratio: "1:2",
+        plateau: "≤30 cmH₂O",
+      },
+      notes: "Therapeutic PEEP reduces preload and afterload. Diuresis. Consider nitroglycerin. Monitor hemodynamics closely with PEEP changes.",
+    },
+    {
+      id: "dka",
+      name: "DKA",
+      subtitle: "Diabetic Ketoacidosis",
+      params: {
+        mode: "Volume Control (AC/VC)",
+        TV: "6–8 mL/kg IBP",
+        RR: "16–20 bpm (may need higher to compensate metabolic acidosis)",
+        PEEP: "5 cmH₂O",
+        "FiO₂": "Titrate to SpO₂ >94%",
+        trigger: "Flow trigger 1–2 L/min",
+        inspiratory_flow: "60 L/min",
+        ie_ratio: "1:2",
+        plateau: "≤30 cmH₂O",
+      },
+      notes: "Match pre-intubation respiratory rate (patient was compensating). Aggressive fluid resuscitation. Insulin infusion. Monitor potassium closely.",
+    },
+    {
+      id: "post_rosc",
+      name: "Post-ROSC",
+      subtitle: "After return of spontaneous circulation",
+      params: {
+        mode: "Volume Control (AC/VC)",
+        TV: "6 mL/kg IBP",
+        RR: "10–12 bpm",
+        PEEP: "5–8 cmH₂O",
+        "FiO₂": "Titrate to SpO₂ 94–98% (avoid hyperoxia)",
+        trigger: "Flow trigger 1–2 L/min",
+        inspiratory_flow: "60 L/min",
+        ie_ratio: "1:2",
+        plateau: "≤30 cmH₂O",
+      },
+      notes: "Avoid hyperoxia (aim SpO₂ 94–98%). Avoid hyperventilation. Targeted temperature management (32–36°C). Hemodynamic support.",
+    },
+    {
+      id: "hyperkalemia_arrest",
+      name: "Hyperkalemia Arrest",
+      subtitle: "Cardiac arrest secondary to hyperkalemia",
+      params: {
+        mode: "Volume Control (AC/VC)",
+        TV: "6 mL/kg IBP",
+        RR: "10–12 bpm",
+        PEEP: "5 cmH₂O",
+        "FiO₂": "100% during arrest",
+        trigger: "Flow trigger 1–2 L/min",
+        inspiratory_flow: "60 L/min",
+        ie_ratio: "1:2",
+        plateau: "≤30 cmH₂O",
+      },
+      notes: "Treat K⁺: Calcium chloride 10% 10mL IV, Insulin 10U + D50 50mL, Saline bolus, Sodium bicarbonate 50mL (8.4%), Nebulized salbutamol. Continue CPR.",
+    },
+  ],
+
+  /* ---------- Tube confirmation hierarchy ---------- */
+  tubeConfirmation: [
+    { id: "etco2",       label: "Continuous waveform ETCO₂",   icon: "📈", primary: true, note: "Gold standard — 6 consecutive waveforms" },
+    { id: "chest_rise",  label: "Bilateral chest rise",        icon: "🫁", primary: false },
+    { id: "breath_sounds", label: "Bilateral breath sounds",   icon: "👂", primary: false },
+    { id: "no_epigastric", label: "No epigastric sounds",      icon: "✅", primary: false },
+    { id: "tube_depth",  label: "Tube depth at teeth/lip",     icon: "📏", primary: false },
+    { id: "fogging",     label: "Fogging in tube",             icon: "💨", primary: false },
+    { id: "cxr",         label: "Chest X-ray (later)",         icon: "📷", primary: false, note: "Ordered — not for immediate confirmation" },
+  ],
+
+  /* ---------- Tube size defaults ---------- */
+  tubeDefaults: {
+    adult: { male: { size: 8.0, depth: 22 }, female: { size: 7.0, depth: 20 } },
+    child_formula: "Age/4 + 4",
+    depth_formula: "Size × 3",
+  },
+
+  /* ---------- LMA sizes ---------- */
+  lmaSizes: [
+    { weight: "<5 kg",    size: "1", blade: "—" },
+    { weight: "5–10 kg",  size: "1.5", blade: "—" },
+    { weight: "10–20 kg", size: "2", blade: "—" },
+    { weight: "20–30 kg", size: "2.5", blade: "—" },
+    { weight: "30–50 kg", size: "3", blade: "—" },
+    { weight: "50–70 kg", size: "4", blade: "—" },
+    { weight: "70–100 kg", size: "5", blade: "—" },
+    { weight: ">100 kg",  size: "5", blade: "—" },
+  ],
+
+  /* ---------- Vasopressor infusion rates ---------- */
+  vasopressors: [
+    { id: "norepinephrine", name: "Norepinephrine", conc: 0.004, unit: "mg/mL", defaultConc: "4 mg/250 mL", rates: [
+      { label: "Low", dose: 0.05 },
+      { label: "Medium", dose: 0.1 },
+      { label: "High", dose: 0.2 },
+      { label: "Max", dose: 0.5 },
+    ]},
+    { id: "epinephrine", name: "Epinephrine", conc: 0.016, unit: "mg/mL", defaultConc: "4 mg/250 mL", rates: [
+      { label: "Low", dose: 0.01 },
+      { label: "Medium", dose: 0.05 },
+      { label: "High", dose: 0.1 },
+      { label: "Max", dose: 0.5 },
+    ]},
+    { id: "dopamine", name: "Dopamine", conc: 1.6, unit: "mg/mL", defaultConc: "400 mg/250 mL", rates: [
+      { label: "Renal", dose: 2 },
+      { label: "Cardiac", dose: 5 },
+      { label: "Pressor", dose: 10 },
+      { label: "Max", dose: 20 },
+    ]},
+    { id: "phenylephrine", name: "Phenylephrine", conc: 0.1, unit: "mg/mL", defaultConc: "20 mg/200 mL", rates: [
+      { label: "Low", dose: 0.5 },
+      { label: "Medium", dose: 1 },
+      { label: "High", dose: 2 },
+      { label: "Max", dose: 5 },
+    ]},
+    { id: "vasopressin", name: "Vasopressin", conc: 0.02, unit: "U/mL", defaultConc: "20 U/1000 mL", rates: [
+      { label: "Fixed", dose: 0.04 },
+    ]},
+  ],
+
+  /* ---------- Patient categories for dosing ---------- */
+  patientCategories: [
+    { id: "adult",       label: "Adult",       note: "Standard adult dosing" },
+    { id: "obese",       label: "Obese",       note: "Dose to IBW unless noted" },
+    { id: "elderly",     label: "Elderly (>65)", note: "Reduce sedatives 25–50%" },
+    { id: "pediatric",   label: "Pediatric",   note: "Weight-based dosing" },
+    { id: "neonate",     label: "Neonate",     note: "<28 days — special dosing" },
+  ],
+
+  /* ---------- Report template ---------- */
+  reportTemplate: {
+    title: "Rapid Sequence Intubation — Procedure Report",
+    sections: [
+      { id: "indication", label: "Indication" },
+      { id: "airway_assessment", label: "Airway Assessment" },
+      { id: "lemon_score", label: "LEMON Score" },
+      { id: "preoxygenation", label: "Pre-oxygenation" },
+      { id: "drugs", label: "Drugs Administered" },
+      { id: "timeline", label: "Timeline" },
+      { id: "attempts", label: "Laryngoscopy Attempts" },
+      { id: "cl_grade", label: "Cormack-Lehane Grade" },
+      { id: "bougie", label: "Bougie Used" },
+      { id: "tube", label: "Tube Details" },
+      { id: "confirmation", label: "Tube Confirmation" },
+      { id: "complications", label: "Complications" },
+      { id: "operator", label: "Operator" },
+      { id: "assistant", label: "Assistant" },
+      { id: "ventilator", label: "Ventilator Settings" },
+      { id: "sedation", label: "Post-Intubation Sedation" },
+    ],
+  },
+};
+</script>
+<script>
+/* ==========================================================================
+   CALCULATORS.JS — Pure math: IBW, tube size/depth, LEMON, shock index
+   ========================================================================== */
+
+"use strict";
+
+const Calc = (() => {
+
+  /* Ideal / predicted body weight (Devine formula) */
+  function ibw(heightCm, sex) {
+    const inches = heightCm / 2.54;
+    if (sex === "female") return 45.5 + 2.3 * (inches - 60);
+    return 50 + 2.3 * (inches - 60);
+  }
+
+  /* Tube size (adult: by sex; child: age/4+4) */
+  function tubeSize(ageYears, sex) {
+    if (ageYears !== null && ageYears !== undefined && ageYears < 16) {
+      const uncuffed = (ageYears / 4) + 4;
+      const cuffed = uncuffed - 0.5;
+      return {
+        uncuffed: uncuffed.toFixed(1),
+        cuffed: cuffed.toFixed(1),
+        depth: (uncuffed * 3).toFixed(0),
+        note: "Cuffed acceptable from term neonate — use low-pressure cuff",
+      };
+    }
+    if (sex === "female") return { size: "7.0", depth: "20" };
+    return { size: "8.0", depth: "22" };
+  }
+
+  /* LMA size by weight */
+  function lmaSize(weightKg) {
+    const table = DATA.lmaSizes;
+    for (const row of table) {
+      const [lo, hi] = row.weight.replace(/[^\d–-]/g, "").split(/[–-]/).map(Number);
+      if (weightKg >= lo && weightKg <= (hi || 999)) return row;
+    }
+    return table[table.length - 1];
+  }
+
+  /* LEMON score calculation */
+  function lemonScore(flags) {
+    let score = 0;
+    const allCriteria = [
+      ...DATA.lemon.external,
+      ...DATA.lemon.look,
+      ...DATA.lemon.evaluate_3_3,
+      ...DATA.lemon.mallampati,
+      ...DATA.lemon.neck,
+      ...DATA.lemon.obstruction,
+    ];
+    for (const criterion of allCriteria) {
+      if (flags.includes(criterion.id)) score++;
+    }
+
+    let risk;
+    if (score <= 1) risk = DATA.lemon.scoring.green;
+    else if (score <= 3) risk = DATA.lemon.scoring.amber;
+    else risk = DATA.lemon.scoring.red;
+
+    return { score, risk };
+  }
+
+  /* Shock index & MAP */
+  function shockIndex(hr, sbp, dbp) {
+    const si = hr / sbp;
+    const map = dbp + (sbp - dbp) / 3;
+    let interp;
+    if (si < 0.6) interp = "Normal";
+    else if (si < 1.0) interp = "Mild shock";
+    else if (si < 1.4) interp = "Moderate shock";
+    else interp = "Severe shock — consider massive transfusion";
+    return { si: si.toFixed(2), map: map.toFixed(0), interpretation: interp };
+  }
+
+  /* Vasopressor infusion rate: dose (mcg/kg/min) × weight (kg) × 60 / conc (mg/mL) = mL/hr */
+  function pressorRate(dosePerKgMin, weightKg, concMgPerMl) {
+    const rate = (dosePerKgMin * weightKg * 60) / concMgPerMl;
+    return rate.toFixed(1);
+  }
+
+  /* Drug dose calculation */
+  function drugDose(dosePerKg, weightKg, maxDose, minDose) {
+    let dose = dosePerKg * weightKg;
+    if (maxDose) dose = Math.min(dose, maxDose);
+    if (minDose) dose = Math.max(dose, minDose);
+    return Math.round(dose * 10) / 10;
+  }
+
+  return { ibw, tubeSize, lmaSize, lemonScore, shockIndex, pressorRate, drugDose };
+})();
+</script>
+<script>
+/* ==========================================================================
+   STORAGE.JS — IndexedDB wrapper for settings + saved case reports
+   ========================================================================== */
+
+"use strict";
+
+const Store = (() => {
+  const DB_NAME = "er-airway";
+  const DB_VER = 2;
+  let db = null;
+
+  function open() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, DB_VER);
+      req.onupgradeneeded = (e) => {
+        const d = e.target.result;
+        if (!d.objectStoreNames.contains("settings")) d.createObjectStore("settings");
+        if (!d.objectStoreNames.contains("cases")) d.createObjectStore("cases", { keyPath: "id" });
+      };
+      req.onsuccess = (e) => { db = e.target.result; resolve(db); };
+      req.onerror = (e) => reject(e.target.error);
+    });
+  }
+
+  function tx(store, mode) {
+    return db.transaction(store, mode).objectStore(store);
+  }
+
+  function get(store, key) {
+    return new Promise((resolve, reject) => {
+      const r = tx(store, "readonly").get(key);
+      r.onsuccess = () => resolve(r.result);
+      r.onerror = () => reject(r.error);
+    });
+  }
+
+  function set(store, key, value) {
+    return new Promise((resolve, reject) => {
+      const r = tx(store, "readwrite").put(value, key);
+      r.onsuccess = () => resolve();
+      r.onerror = () => reject(r.error);
+    });
+  }
+
+  function del(store, key) {
+    return new Promise((resolve, reject) => {
+      const r = tx(store, "readwrite").delete(key);
+      r.onsuccess = () => resolve();
+      r.onerror = () => reject(r.error);
+    });
+  }
+
+  function all(store) {
+    return new Promise((resolve, reject) => {
+      const r = tx(store, "readonly").getAll();
+      r.onsuccess = () => resolve(r.result);
+      r.onerror = () => reject(r.error);
+    });
+  }
+
+  /* Settings helpers */
+  async function getSetting(key, fallback) {
+    try { const v = await get("settings", key); return v !== undefined ? v : fallback; }
+    catch { return fallback; }
+  }
+  async function setSetting(key, value) { return set("settings", key, value); }
+
+  /* Case helpers */
+  async function saveCase(c) {
+    c.id = c.id || Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    c.savedAt = c.savedAt || new Date().toISOString();
+    await set("cases", c);
+    return c;
+  }
+  async function listCases() { return (await all("cases")).sort((a, b) => b.savedAt.localeCompare(a.savedAt)); }
+  async function deleteCase(id) { return del("cases", id); }
+
+  return { open, getSetting, setSetting, saveCase, listCases, deleteCase };
+})();
+</script>
+<script>
+/* ==========================================================================
+   VOICE.JS — Web Speech API wrapper
+   Handles browser autoplay policies — must be called from direct user gesture.
+   ========================================================================== */
+
+"use strict";
+
+const Voice = (() => {
+  const synth = window.speechSynthesis;
+  let enabled = true;
+  let resumed = false;
+
+  /* Some browsers (iOS especially) need a speak() call inside a user gesture
+     to "unlock" the synth. Call this once from the first tap. */
+  function unlock() {
+    if (resumed || !synth) return;
+    resumed = true;
+    try {
+      const u = new SpeechSynthesisUtterance("");
+      u.volume = 0;
+      synth.speak(u);
+      synth.cancel();
+    } catch (_) { /* ignore */ }
+  }
+
+  function speak(text) {
+    if (!enabled || !synth) return;
+    unlock();
+    // Some browsers pause synth after ~15s of silence — resume before speaking
+    try { synth.resume(); } catch (_) { /* ignore */ }
+    synth.cancel();
+    // Small delay lets cancel() finish before new utterance
+    setTimeout(() => {
+      const u = new SpeechSynthesisUtterance(text);
+      u.rate = 1.05;
+      u.pitch = 1;
+      u.volume = 1;
+      u.onerror = () => { /* silently ignore speech errors */ };
+      synth.speak(u);
+    }, 50);
+  }
+
+  function stop() { synth?.cancel(); }
+  function setEnabled(v) { enabled = v; if (!v) stop(); }
+  function isEnabled() { return enabled; }
+
+  return { speak, stop, setEnabled, isEnabled, unlock };
+})();
+</script>
+<script>
+/* ==========================================================================
+   RSI.JS — RSI workflow engine: branching, checklist gate, timestamps, drugs
+   ========================================================================== */
+
+"use strict";
+
+const RSI = (() => {
+  let mode = "adult";       // "adult" | "child"
+  let steps = [];
+  let idx = 0;
+  let startTime = null;
+  let clockInterval = null;
+  let attemptTimer = null;
+  let attemptStart = null;
+  let attempts = [];         // { attempt, start, end, clGrade, viewPct, bougie, ettSize, ettDepth }
+  let currentAttempt = null;
+  let timeline = [];         // { time, event }
+  let drugRecord = [];       // { name, dose, unit, time }
+  let checklistState = {};   // { id: true/false }
+  let lemonFlags = [];
+  let tubeConfirmed = {};    // { id: true }
+  let fields = {};           // { fieldId: value }
+  let completed = false;
+
+  const $ = (s) => document.querySelector(s);
+  const $$ = (s) => document.querySelectorAll(s);
+
+  /* ---- Lifecycle ---- */
+  function init(m) {
+    mode = m;
+    steps = DATA.rsiSteps[m];
+    idx = 0;
+    startTime = null;
+    clearInterval(clockInterval);
+    clearInterval(attemptTimer);
+    attemptTimer = null;
+    attemptStart = null;
+    attempts = [];
+    currentAttempt = null;
+    timeline = [];
+    drugRecord = [];
+    checklistState = {};
+    lemonFlags = [];
+    tubeConfirmed = {};
+    fields = {};
+    completed = false;
+
+    $("#rsiClock").textContent = "00:00";
+    $("#rsiDelta").textContent = "";
+    render();
+  }
+
+  function getState() {
+    return { mode, steps, idx, startTime, attempts, timeline, drugRecord, checklistState, lemonFlags, tubeConfirmed, fields, completed };
+  }
+
+  /* ---- Timer ---- */
+  function startTimer() {
+    startTime = Date.now();
+    clockInterval = setInterval(tick, 1000);
+    tick();
+  }
+  function tick() {
+    if (!startTime) return;
+    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+    const m = String(Math.floor(elapsed / 60)).padStart(2, "0");
+    const s = String(elapsed % 60).padStart(2, "0");
+    $("#rsiClock").textContent = `${m}:${s}`;
+  }
+  function timestamp(event) {
+    const now = new Date();
+    const elapsed = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
+    const m = String(Math.floor(elapsed / 60)).padStart(2, "0");
+    const s = String(elapsed % 60).padStart(2, "0");
+    timeline.push({
+      time: `${m}:${s}`,
+      clock: now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+      event,
+    });
+    renderTimeline();
+  }
+
+  /* ---- Attempt tracking ---- */
+  function startAttempt() {
+    attemptStart = Date.now();
+    const attemptNum = attempts.length + 1;
+    currentAttempt = { attempt: attemptNum, start: new Date().toISOString() };
+    timestamp(`Laryngoscopy attempt ${attemptNum} started`);
+    // start 30-second timer
+    if (attemptTimer) clearInterval(attemptTimer);
+    const timerEl = $("#rsiAttemptTimer");
+    if (timerEl) {
+      let sec = 0;
+      attemptTimer = setInterval(() => {
+        sec++;
+        timerEl.textContent = `${sec}s`;
+        if (sec >= 30) timerEl.style.color = "var(--red)";
+        else timerEl.style.color = "var(--accent)";
+      }, 1000);
+    }
+  }
+
+  function endAttempt() {
+    if (attemptTimer) { clearInterval(attemptTimer); attemptTimer = null; }
+    if (currentAttempt) {
+      currentAttempt.end = new Date().toISOString();
+      currentAttempt.durationMs = Date.now() - attemptStart;
+      attempts.push(currentAttempt);
+      timestamp(`Laryngoscopy attempt ${currentAttempt.attempt} ended (${Math.round(currentAttempt.durationMs / 1000)}s)`);
+      currentAttempt = null;
+    }
+  }
+
+  /* ---- Checklist gate ---- */
+  function renderChecklist() {
+    const body = $("#rsiStepBody");
+    const allChecked = DATA.preRSIChecklist.every((item) => checklistState[item.id]);
+
+    let html = `<div class="checklist-gate">
+      <h3>🔒 Airway Checklist — Challenge & Response</h3>`;
+
+    for (const item of DATA.preRSIChecklist) {
+      const checked = checklistState[item.id];
+      html += `
+        <div class="checklist-item ${checked ? "checked" : ""}" data-checklist="${item.id}">
+          <div class="checklist-check">${checked ? "✓" : ""}</div>
+          <span class="checklist-label">${item.icon} ${item.label}</span>
+        </div>`;
+    }
+
+    if (!allChecked) {
+      html += `<div class="checklist-gate-locked">⚠ All items must be checked before proceeding</div>`;
+    }
+    html += `</div>`;
+    body.innerHTML = html;
+
+    // Bind clicks
+    body.querySelectorAll("[data-checklist]").forEach((el) => {
+      el.addEventListener("click", () => {
+        const id = el.dataset.checklist;
+        checklistState[id] = !checklistState[id];
+        if (checklistState[id]) timestamp(`Checklist: ${DATA.preRSIChecklist.find((c) => c.id === id).label}`);
+        renderChecklist();
+        // Update NEXT button state after toggle
+        const allNowChecked = DATA.preRSIChecklist.every((item) => checklistState[item.id]);
+        $("#rsiNext").disabled = !allNowChecked;
+        // Speak feedback directly in click handler (browser gesture policy)
+        if (allNowChecked) {
+          Voice.speak("All checklist items confirmed. You may proceed.");
+          startTimer();
+        }
+      });
+    });
+
+    // Enable/disable next button
+    $("#rsiNext").disabled = !allChecked;
+  }
+
+  /* ---- Decision branch rendering ---- */
+  function renderDecision(step) {
+    const body = $("#rsiStepBody");
+    const dec = step.decision;
+    let html = `<div class="card"><p>${step.content}</p></div>`;
+    html += `<div class="tree-node">
+      <div class="tree-question">${dec.question}</div>
+      <div class="tree-options">
+        <div class="tree-option" data-decision="yes">
+          ✅ ${dec.yes.label}
+          <span class="tree-arrow">→</span>
+        </div>
+        <div class="tree-option" data-decision="no">
+          ❌ ${dec.no.label}
+          <span class="tree-arrow">↓</span>
+        </div>
+      </div>
+    </div>`;
+
+    // Branch options (hidden until NO selected)
+    html += `<div id="rsiBranches" style="display:none">`;
+    for (const branch of dec.no.branches) {
+      html += `<div class="tree-option" data-branch="${branch.id}">
+        🔀 ${branch.label}
+        ${branch.note ? `<br><small style="color:var(--text-dim)">${branch.note}</small>` : ""}
+        <span class="tree-arrow">→</span>
+      </div>`;
+    }
+    html += `</div>`;
+    body.innerHTML = html;
+
+    let selectedDecision = null;
+
+    body.querySelectorAll("[data-decision]").forEach((el) => {
+      el.addEventListener("click", () => {
+        body.querySelectorAll("[data-decision]").forEach((e) => e.classList.remove("selected"));
+        el.classList.add("selected");
+        selectedDecision = el.dataset.decision;
+
+        if (selectedDecision === "yes") {
+          timestamp("Decision: adequate — continuing RSI");
+          Voice.speak("Adequate. Continuing RSI.");
+          $("#rsiBranches").style.display = "none";
+          fields[`decision_${step.id}`] = "adequate";
+          // Auto-advance
+          setTimeout(() => next(), 400);
+        } else {
+          $("#rsiBranches").style.display = "block";
+          Voice.speak("Inadequate. Select a rescue strategy.");
+          timestamp("Decision: inadequate — branching");
+        }
+      });
+    });
+
+    body.querySelectorAll("[data-branch]").forEach((el) => {
+      el.addEventListener("click", () => {
+        body.querySelectorAll("[data-branch]").forEach((e) => e.classList.remove("selected"));
+        el.classList.add("selected");
+        const branchId = el.dataset.branch;
+        const branch = dec.no.branches.find((b) => b.id === branchId);
+        timestamp(`Branch selected: ${branch.label}`);
+        fields[`decision_${step.id}`] = branchId;
+        // Auto-advance
+        setTimeout(() => next(), 400);
+      });
+    });
+  }
+
+  /* ---- Drug choice rendering ---- */
+  function renderDrugChoice(step) {
+    const body = $("#rsiStepBody");
+    let html = `<div class="card"><p>${step.content}</p></div>`;
+
+    for (const drugGroup of step.drugSequence) {
+      const group = DATA.drugs[drugGroup];
+      if (!group) continue;
+      html += `<div class="card"><h3>${group.label}</h3><div class="chiprow" data-group="${drugGroup}">`;
+      for (const agent of group.agents) {
+        const selected = drugRecord.find((d) => d.agentId === agent.id);
+        html += `<div class="chip ${selected ? "active" : ""}" data-drug="${agent.id}">${agent.name}</div>`;
+      }
+      html += `</div><div id="drugDetail_${drugGroup}" class="drug-detail-container"></div></div>`;
+    }
+
+    html += `<div class="card">
+      <div class="weight-row">
+        <label>Patient weight</label>
+        <input type="number" id="rsiWeight" min="0" step="0.1" placeholder="kg" value="${fields.weight || ""}">
+        <span>kg</span>
+      </div>
+    </div>`;
+
+    body.innerHTML = html;
+
+    // Bind drug chip clicks
+    body.querySelectorAll("[data-drug]").forEach((el) => {
+      el.addEventListener("click", () => {
+        const agentId = el.dataset.drug;
+        const groupKey = el.closest("[data-group]").dataset.group;
+        const group = DATA.drugs[groupKey];
+        const agent = group.agents.find((a) => a.id === agentId);
+
+        // Toggle active
+        el.closest(".chiprow").querySelectorAll(".chip").forEach((c) => c.classList.remove("active"));
+        el.classList.add("active");
+
+        // Show detail
+        const weight = parseFloat($("#rsiWeight")?.value) || 70;
+        const cat = fields.patientCategory || "adult";
+        let doseVal = null;
+        if (agent.dosePerKg) {
+          const dosePerKg = cat === "pediatric" || cat === "neonate" ? (agent.dosePerKg.child || agent.dosePerKg.adult) : agent.dosePerKg.adult;
+          doseVal = Calc.drugDose(dosePerKg, weight, agent.maxDose, agent.minDose);
+        }
+
+        let detail = `<div class="drug-header"><span class="drug-name">${agent.name}</span>`;
+        if (doseVal !== null) detail += `<span class="drug-dose">${doseVal} ${agent.unit}</span>`;
+        detail += `</div><dl class="drug-meta">`;
+        if (agent.onset) detail += `<dt>Onset</dt><dd>${agent.onset}</dd>`;
+        if (agent.duration) detail += `<dd>Duration</dd><dd>${agent.duration}</dd>`;
+        if (agent.route) detail += `<dt>Route</dt><dd>${agent.route}</dd>`;
+        if (agent.dosePerKg) detail += `<dt>Dose</dt><dd>${agent.dosePerKg.adult} ${agent.unit}/kg (adult)</dd>`;
+        if (doseVal !== null) detail += `<dt>Calculated</dt><dd>${doseVal} ${agent.unit} for ${weight} kg</dd>`;
+        detail += `</dl>`;
+
+        if (agent.contraindications?.length) {
+          detail += `<div class="drug-warn"><strong>Avoid in:</strong><br>${agent.contraindications.join("<br>")}</div>`;
+        }
+        if (agent.warnings) {
+          detail += `<div class="drug-warn" style="margin-top:6px;background:var(--amber-bg);border-color:rgba(255,183,77,.2);color:var(--amber)">${agent.warnings}</div>`;
+        }
+
+        document.getElementById(`drugDetail_${groupKey}`).innerHTML = detail;
+
+        // Record drug
+        drugRecord = drugRecord.filter((d) => d.group !== groupKey);
+        drugRecord.push({
+          group: groupKey,
+          agentId: agent.id,
+          name: agent.name,
+          dose: doseVal,
+          unit: agent.unit,
+          time: new Date().toISOString(),
+        });
+        timestamp(`${agent.name} ${doseVal}${agent.unit} administered`);
+        Voice.speak(`${agent.name} ${doseVal} ${agent.unit} pushed`);
+      });
+    });
+
+    // Weight input
+    const weightInput = $("#rsiWeight");
+    if (weightInput) {
+      weightInput.addEventListener("input", () => {
+        fields.weight = weightInput.value;
+      });
+    }
+  }
+
+  /* ---- Attempt tracking UI ---- */
+  function renderAttemptTracking(step) {
+    const body = $("#rsiStepBody");
+    let html = `<div class="card"><p>${step.content}</p></div>`;
+
+    // Attempt counter
+    html += `<div class="attempt-counter">
+      <span class="ac-label">Attempt</span>
+      <span class="ac-num">${attempts.length + 1}</span>
+      <span id="rsiAttemptTimer" style="font-family:var(--font-mono);font-size:1.1rem;margin-left:auto">0s</span>
+    </div>`;
+
+    // Fields
+    if (step.fields) {
+      html += `<div class="card">`;
+      for (const field of step.fields) {
+        if (field.type === "select") {
+          html += `<div class="info-row">
+            <span class="info-label">${field.label}</span>
+            <select data-field="${field.id}" style="width:auto;padding:6px 10px">
+              <option value="">—</option>
+              ${field.options.map((o) => `<option value="${o}" ${fields[field.id] === o ? "selected" : ""}>${o}</option>`).join("")}
+            </select>
+          </div>`;
+        } else if (field.type === "number") {
+          html += `<div class="info-row">
+            <span class="info-label">${field.label}</span>
+            <input type="number" data-field="${field.id}" placeholder="—" value="${fields[field.id] || ""}" style="width:80px;padding:6px 10px">
+            ${field.suffix ? `<span>${field.suffix}</span>` : ""}
+          </div>`;
+        } else if (field.type === "toggle") {
+          html += `<div class="confirm-step ${fields[field.id] ? "done" : ""}" data-toggle-field="${field.id}">
+            <div class="cs-num">${fields[field.id] ? "✓" : ""}</div>
+            <span class="cs-text">${field.label}</span>
+          </div>`;
+        }
+      }
+      html += `</div>`;
+    }
+
+    // Previous attempts summary
+    if (attempts.length > 0) {
+      html += `<div class="card"><h3>Previous Attempts</h3>`;
+      for (const a of attempts) {
+        const dur = Math.round(a.durationMs / 1000);
+        html += `<div class="info-row">
+          <span class="info-label">Attempt ${a.attempt}</span>
+          <span class="info-value">${dur}s ${a.clGrade ? `— CL ${a.clGrade}` : ""}</span>
+        </div>`;
+      }
+      html += `</div>`;
+    }
+
+    html += `<div class="bigbtns">
+      <button id="attemptStartBtn" class="bigbtn primary">START ATTEMPT</button>
+      <button id="attemptEndBtn" class="bigbtn ghost" ${!currentAttempt ? "disabled" : ""}>END ATTEMPT</button>
+    </div>`;
+
+    body.innerHTML = html;
+
+    // Bindings
+    const startBtn = $("#attemptStartBtn");
+    const endBtn = $("#attemptEndBtn");
+    if (startBtn) startBtn.addEventListener("click", () => { startAttempt(); Voice.speak("Attempt " + (attempts.length + 1) + " started"); renderAttemptTracking(step); });
+    if (endBtn) endBtn.addEventListener("click", () => {
+      endAttempt();
+      // Save field values
+      if (step.fields) {
+        for (const field of step.fields) {
+          const el = body.querySelector(`[data-field="${field.id}"]`);
+          if (el) fields[field.id] = el.value;
+        }
+      }
+      renderAttemptTracking(step);
+      updateNextState(step); // re-evaluate NEXT button
+    });
+
+    // Field bindings
+    body.querySelectorAll("[data-field]").forEach((el) => {
+      el.addEventListener("change", () => { fields[el.dataset.field] = el.value; });
+    });
+    body.querySelectorAll("[data-toggle-field]").forEach((el) => {
+      el.addEventListener("click", () => {
+        const id = el.dataset.toggleField;
+        fields[id] = !fields[id];
+        renderAttemptTracking(step);
+      });
+    });
+  }
+
+  /* ---- Tube confirmation rendering ---- */
+  function renderTubeConfirmation(step) {
+    const body = $("#rsiStepBody");
+    let html = `<div class="card"><p>${step.content}</p></div>`;
+    html += `<div class="card">`;
+
+    for (const item of step.confirmSteps) {
+      const done = tubeConfirmed[item.id];
+      html += `<div class="confirm-step ${done ? "done" : ""}" data-confirm="${item.id}">
+        <div class="cs-num">${done ? "✓" : ""}</div>
+        <span class="cs-text">${item.primary ? "📈 " : ""}${item.label}${item.primary ? " <strong>(GOLD STANDARD)</strong>" : ""}</span>
+      </div>`;
+    }
+    html += `</div>`;
+
+    // Check if ETCO2 confirmed
+    const etco2Done = tubeConfirmed["etco2"];
+    if (etco2Done) {
+      html += `<div class="tree-outcome green">✓ ETCO₂ confirmed — tube is in correct position</div>`;
+    }
+
+    body.innerHTML = html;
+
+    body.querySelectorAll("[data-confirm]").forEach((el) => {
+      el.addEventListener("click", () => {
+        const id = el.dataset.confirm;
+        tubeConfirmed[id] = !tubeConfirmed[id];
+        if (tubeConfirmed[id]) {
+          const item = step.confirmSteps.find((c) => c.id === id);
+          timestamp(`Confirmation: ${item.label}`);
+          Voice.speak(item.label);
+        }
+        renderTubeConfirmation(step);
+      });
+    });
+  }
+
+  /* ---- Post-intubation rendering ---- */
+  function renderPostIntubation(step) {
+    const body = $("#rsiStepBody");
+    let html = `<div class="card"><p>${step.content}</p></div>`;
+
+    // Summary of procedure so far
+    const elapsed = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
+    const m = String(Math.floor(elapsed / 60)).padStart(2, "0");
+    const s = String(elapsed % 60).padStart(2, "0");
+
+    html += `<div class="card">
+      <h3>Procedure Summary</h3>
+      <div class="info-row"><span class="info-label">Total time</span><span class="info-value">${m}:${s}</span></div>
+      <div class="info-row"><span class="info-label">Attempts</span><span class="info-value">${attempts.length}</span></div>
+      ${fields.cl_grade ? `<div class="info-row"><span class="info-label">Cormack-Lehane</span><span class="info-value">Grade ${fields.cl_grade}</span></div>` : ""}
+      ${fields.ett_size ? `<div class="info-row"><span class="info-label">ETT size</span><span class="info-value">${fields.ett_size} mm</span></div>` : ""}
+      ${fields.ett_depth ? `<div class="info-row"><span class="info-label">ETT depth</span><span class="info-value">${fields.ett_depth} cm</span></div>` : ""}
+      ${fields.bougie_used ? `<div class="info-row"><span class="info-label">Bougie</span><span class="info-value">Used</span></div>` : ""}
+    </div>`;
+
+    // Drug summary
+    if (drugRecord.length > 0) {
+      html += `<div class="card"><h3>Drugs Given</h3>`;
+      for (const d of drugRecord) {
+        html += `<div class="info-row"><span class="info-label">${d.name}</span><span class="info-value">${d.dose}${d.unit}</span></div>`;
+      }
+      html += `</div>`;
+    }
+
+    html += `<div class="bigbtns">
+      <button id="rsiCompleteBtn" class="bigbtn primary">COMPLETE & GENERATE REPORT</button>
+    </div>`;
+
+    body.innerHTML = html;
+
+    $("#rsiCompleteBtn")?.addEventListener("click", () => {
+      completed = true;
+      timestamp("RSI procedure completed");
+      Voice.speak("RSI procedure completed. Report generated.");
+      // Navigate to reports
+      if (typeof App !== "undefined" && App.navigateTo) {
+        App.navigateTo("reports");
+      }
+    });
+  }
+
+  /* ---- Ventilator presets for post-intubation ---- */
+  function renderVentilatorStep() {
+    const body = $("#rsiStepBody");
+    let html = `<div class="card">
+      <h3>Quick Ventilator Setup</h3>
+      <p class="note">Select a preset or configure manually</p>
+      <div class="chiprow" style="margin-top:10px">`;
+    for (const preset of DATA.ventilatorPresets) {
+      html += `<div class="chip" data-vent-preset="${preset.id}">${preset.name}</div>`;
+    }
+    html += `</div><div id="ventPresetDetail"></div></div>`;
+    body.innerHTML = html;
+
+    body.querySelectorAll("[data-vent-preset]").forEach((el) => {
+      el.addEventListener("click", () => {
+        body.querySelectorAll("[data-vent-preset]").forEach((c) => c.classList.remove("active"));
+        el.classList.add("active");
+        const preset = DATA.ventilatorPresets.find((p) => p.id === el.dataset.ventPreset);
+        let detail = `<div style="margin-top:12px">`;
+        detail += `<div class="vent-params">`;
+        for (const [k, v] of Object.entries(preset.params)) {
+          detail += `<dt>${k.replace(/_/g, " ").toUpperCase()}</dt><dd>${v}</dd>`;
+        }
+        detail += `</div>`;
+        if (preset.notes) detail += `<p class="note" style="margin-top:10px">${preset.notes}</p>`;
+        detail += `</div>`;
+        document.getElementById("ventPresetDetail").innerHTML = detail;
+        fields.ventilatorPreset = preset.id;
+        timestamp(`Ventilator preset: ${preset.name}`);
+      });
+    });
+  }
+
+  /* ---- Main render ---- */
+  function render() {
+    const step = steps[idx];
+    if (!step) return;
+
+    // Update header
+    $("#rsiStepName").textContent = step.name;
+    $("#rsiNextName").textContent = idx < steps.length - 1 ? steps[idx + 1].name : "Complete";
+    const pct = ((idx) / (steps.length - 1)) * 100;
+    $("#rsiProgressFill").style.width = `${pct}%`;
+
+    // Back button
+    $("#rsiBack").disabled = idx === 0;
+
+    // Announce step with voice
+    Voice.speak(step.name);
+
+    // Route to appropriate renderer
+    if (step.checklist) {
+      renderChecklist();
+    } else if (step.decision) {
+      renderDecision(step);
+    } else if (step.drugChoice) {
+      renderDrugChoice(step);
+    } else if (step.attemptTracking) {
+      renderAttemptTracking(step);
+    } else if (step.confirmSteps) {
+      renderTubeConfirmation(step);
+    } else if (step.postIntubation) {
+      renderPostIntubation(step);
+    } else if (step.timer) {
+      renderTimerStep(step);
+    } else {
+      renderGenericStep(step);
+    }
+
+    // Update next button state
+    updateNextState(step);
+  }
+
+  function renderTimerStep(step) {
+    const body = $("#rsiStepBody");
+    let html = `<div class="card"><p>${step.content}</p></div>`;
+    html += `<div class="rsi-timerbar">
+      <div class="rsi-clock" id="stepTimer">${step.timer.duration || 0}s</div>
+      <button id="stepTimerStart" class="bigbtn primary small">START</button>
+    </div>`;
+    html += `<div class="bigbtns" style="margin-top:10px">
+      <button id="stepTimerSkip" class="bigbtn ghost">SKIP TIMER</button>
+    </div>`;
+    body.innerHTML = html;
+
+    let remaining = step.timer.duration || 60;
+    let timerRunning = false;
+    const timerEl = body.querySelector("#stepTimer");
+    const startBtn = body.querySelector("#stepTimerStart");
+    const skipBtn = body.querySelector("#stepTimerSkip");
+
+    // Skip button — proceed immediately
+    skipBtn?.addEventListener("click", () => {
+      timestamp(`Timer skipped: ${step.timer.label}`);
+      Voice.speak("Timer skipped.");
+      $("#rsiNext").disabled = false;
+      next();
+    });
+
+    startBtn?.addEventListener("click", () => {
+      if (timerRunning) return;
+      timerRunning = true;
+      startBtn.disabled = true;
+      startBtn.textContent = "RUNNING";
+      skipBtn.style.display = "none";
+      timestamp(`Timer started: ${step.timer.label}`);
+      Voice.speak(`Timer started. ${step.timer.label}`);
+
+      const iv = setInterval(() => {
+        remaining--;
+        timerEl.textContent = `${remaining}s`;
+        if (remaining <= 10) timerEl.style.color = "var(--red)";
+        if (remaining <= 0) {
+          clearInterval(iv);
+          timerEl.textContent = "✓ GO";
+          timerEl.style.color = "var(--green)";
+          Voice.speak("Timer complete. Proceed.");
+          timestamp(`Timer complete: ${step.timer.label}`);
+          $("#rsiNext").disabled = false;
+        }
+      }, 1000);
+    });
+  }
+
+  function renderGenericStep(step) {
+    const body = $("#rsiStepBody");
+    body.innerHTML = `<div class="card"><p>${step.content}</p></div>`;
+  }
+
+  function updateNextState(step) {
+    const nextBtn = $("#rsiNext");
+    if (step.checklist) {
+      const allChecked = DATA.preRSIChecklist.every((item) => checklistState[item.id]);
+      nextBtn.disabled = !allChecked;
+    } else if (step.decision) {
+      nextBtn.disabled = true; // auto-advances on selection
+    } else if (step.attemptTracking) {
+      // NEXT enabled only after at least one attempt is completed
+      nextBtn.disabled = attempts.length === 0;
+    } else if (step.timer && !step.attemptTracking) {
+      nextBtn.disabled = true; // enabled when timer completes
+    } else {
+      nextBtn.disabled = false;
+    }
+  }
+
+  /* ---- Navigation ---- */
+  function next() {
+    if (idx < steps.length - 1) {
+      // End any active attempt
+      if (currentAttempt) endAttempt();
+      idx++;
+      render();
+    }
+  }
+
+  function back() {
+    if (idx > 0) {
+      idx--;
+      render();
+    }
+  }
+
+  /* ---- Timeline rendering ---- */
+  function renderTimeline() {
+    const list = $("#rsiTimelineList");
+    if (!list) return;
+    list.innerHTML = timeline.map((t) => `
+      <div class="timeline-entry">
+        <span class="tl-time">${t.time}</span>
+        <span class="tl-event">${t.event}</span>
+      </div>
+    `).join("");
+    list.scrollTop = list.scrollHeight;
+  }
+
+  /* ---- Emergency / Failed airway ---- */
+  function triggerEmergency() {
+    endAttempt();
+    timestamp("EMERGENCY declared — navigating to failed airway");
+  }
+
+  return { init, getState, next, back, render, timestamp, triggerEmergency, renderTimeline };
+})();
+</script>
+<script>
+/* ==========================================================================
+   APP.JS — Routing, all other screens, install/service-worker wiring
+   ========================================================================== */
+
+"use strict";
+
+const App = (() => {
+  const $ = (s) => document.querySelector(s);
+  const $$ = (s) => document.querySelectorAll(s);
+  let deferredInstall = null;
+  let currentScreen = "dashboard";
+
+  /* ---- Boot ---- */
+  async function boot() {
+    await Store.open();
+    await loadSettings();
+    bindNav();
+    bindBack();
+    bindSettings();
+    bindRSIButtons();
+    bindEmergencyOverlay();
+    bindCalculatorScreen();
+    bindFailedAirway();
+    bindCric();
+    bindVentilatorScreen();
+    bindCalculatorsScreen();
+    bindReports();
+    registerSW();
+    navigateTo("dashboard");
+
+    // Unlock Web Speech API on first user interaction (required by iOS/Android)
+    const unlockVoice = () => {
+      Voice.unlock();
+      document.removeEventListener("touchstart", unlockVoice);
+      document.removeEventListener("click", unlockVoice);
+    };
+    document.addEventListener("touchstart", unlockVoice, { once: true, passive: true });
+    document.addEventListener("click", unlockVoice, { once: true });
+  }
+
+  /* ---- Navigation ---- */
+  function navigateTo(screen, opts) {
+    $$(".screen").forEach((s) => s.classList.remove("active"));
+    const el = $(`#screen-${screen}`);
+    if (el) el.classList.add("active");
+    currentScreen = screen;
+
+    // Title
+    const titles = {
+      dashboard: "ER Airway Assistant",
+      rsi: "RSI Workflow",
+      calculator: "Drug Calculator",
+      failed: "Failed Airway Algorithm",
+      cric: "Cricothyrotomy",
+      ventilator: "Ventilator Presets",
+      calculators: "Airway Calculators",
+      reports: "Case Reports",
+      settings: "Settings",
+    };
+    $("#screenTitle").textContent = titles[screen] || "ER Airway Assistant";
+    $("#backBtn").hidden = screen === "dashboard";
+
+    // Initialize screens
+    if (screen === "rsi" && opts?.mode) RSI.init(opts.mode);
+    if (screen === "failed") renderFailedAirway();
+    if (screen === "ventilator") renderVentilatorGrid();
+    if (screen === "reports") renderReports();
+    if (screen === "calculator") renderCalculatorScreen();
+  }
+
+  function bindNav() {
+    $$("[data-nav]").forEach((el) => {
+      el.addEventListener("click", () => {
+        const nav = el.dataset.nav;
+        const mode = el.dataset.mode;
+        navigateTo(nav, { mode });
+      });
+    });
+  }
+
+  function bindBack() {
+    $("#backBtn").addEventListener("click", () => {
+      if (currentScreen === "rsi") {
+        // Confirm exit
+        if (confirm("Leave RSI workflow? Progress will be saved in timeline.")) {
+          navigateTo("dashboard");
+        }
+      } else {
+        navigateTo("dashboard");
+      }
+    });
+  }
+
+  function bindSettings() {
+    $("#settingsBtn").addEventListener("click", () => navigateTo("settings"));
+  }
+
+  /* ---- RSI buttons ---- */
+  function bindRSIButtons() {
+    $("#rsiNext").addEventListener("click", () => RSI.next());
+    $("#rsiBack").addEventListener("click", () => RSI.back());
+    $("#rsiEmergency").addEventListener("click", () => {
+      $("#emergencyOverlay").hidden = false;
+      RSI.triggerEmergency();
+    });
+  }
+
+  /* ---- Emergency overlay ---- */
+  function bindEmergencyOverlay() {
+    $("#emgToFailed").addEventListener("click", () => {
+      $("#emergencyOverlay").hidden = true;
+      navigateTo("failed");
+    });
+    $("#emgResume").addEventListener("click", () => {
+      $("#emergencyOverlay").hidden = true;
+    });
+  }
+
+  /* ---- Settings ---- */
+  async function loadSettings() {
+    const dark = await Store.getSetting("dark", false);
+    const voice = await Store.getSetting("voice", true);
+    const vibrate = await Store.getSetting("vibrate", true);
+    $("#setDark").checked = dark;
+    $("#setVoice").checked = voice;
+    $("#setVibrate").checked = vibrate;
+    if (dark) document.body.classList.add("dark");
+    Voice.setEnabled(voice);
+
+    $("#setDark").addEventListener("change", async () => {
+      const v = $("#setDark").checked;
+      document.body.classList.toggle("dark", v);
+      await Store.setSetting("dark", v);
+    });
+    $("#setVoice").addEventListener("change", async () => {
+      const v = $("#setVoice").checked;
+      Voice.setEnabled(v);
+      await Store.setSetting("voice", v);
+    });
+    $("#setVibrate").addEventListener("change", async () => {
+      await Store.setSetting("vibrate", $("#setVibrate").checked);
+    });
+  }
+
+  /* ---- Register SW (no-op — parent site handles PWA) ---- */
+  function registerSW() {
+    // Service worker registration handled by parent ED Suite site.
+    // The beforeinstallprompt listener is kept for standalone install support.
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      deferredInstall = e;
+      const btn = $("#installBtn");
+      btn.hidden = false;
+      btn.addEventListener("click", async () => {
+        deferredInstall.prompt();
+        const result = await deferredInstall.userChoice;
+        deferredInstall = null;
+        btn.hidden = true;
+      });
+    });
+  }
+
+  /* ========== DRUG CALCULATOR SCREEN ========== */
+  function bindCalculatorScreen() {}
+
+  function renderCalculatorScreen() {
+    const container = $("#calcCategoryChips");
+    if (!container) return;
+    container.innerHTML = DATA.patientCategories.map((c) =>
+      `<div class="chip" data-cat="${c.id}">${c.label}</div>`
+    ).join("");
+
+    let category = "adult";
+    let weight = 70;
+
+    container.querySelectorAll("[data-cat]").forEach((el) => {
+      el.addEventListener("click", () => {
+        container.querySelectorAll("[data-cat]").forEach((c) => c.classList.remove("active"));
+        el.classList.add("active");
+        category = el.dataset.cat;
+        const cat = DATA.patientCategories.find((c) => c.id === category);
+        $("#calcCategoryNote").textContent = cat?.note || "";
+        renderDoseTables(category, weight);
+      });
+    });
+
+    // Default selection
+    container.querySelector('[data-cat="adult"]')?.classList.add("active");
+
+    $("#calcWeight")?.addEventListener("input", (e) => {
+      weight = parseFloat(e.target.value) || 70;
+      renderDoseTables(category, weight);
+    });
+
+    renderDoseTables(category, weight);
+  }
+
+  function renderDoseTables(category, weight) {
+    // Sedatives
+    renderDrugTable("calcSedTable", DATA.drugs.sedative.agents, weight, category);
+    // NMB
+    renderDrugTable("calcNmbTable", DATA.drugs.paralytic.agents, weight, category);
+    // Infusions
+    renderInfusionTable("calcInfTable", DATA.drugs.post_intubation.agents);
+  }
+
+  function renderDrugTable(tableId, agents, weight, category) {
+    const table = document.getElementById(tableId);
+    if (!table) return;
+    let html = `<thead><tr><th>Drug</th><th>Dose/kg</th><th>Calculated</th><th>Details</th></tr></thead><tbody>`;
+    for (const agent of agents) {
+      const isPediatric = category === "pediatric" || category === "neonate";
+      const dosePerKg = isPediatric ? (agent.dosePerKg.child || agent.dosePerKg.adult) : agent.dosePerKg.adult;
+      let dose = Calc.drugDose(dosePerKg, weight, agent.maxDose, agent.minDose);
+      let doseDisplay = `${dose} ${agent.unit}`;
+
+      // Elderly reduction
+      if (category === "elderly" && (agent.category === "sedative-hypnotic" || agent.category === "benzodiazepine" || agent.category === "dissociative")) {
+        const reduced = Math.round(dose * 0.75 * 10) / 10;
+        doseDisplay = `${reduced} ${agent.unit} <small style="color:var(--amber)">(↓25% elderly)</small>`;
+        dose = reduced;
+      }
+
+      html += `<tr>
+        <td><strong>${agent.name}</strong><br><small style="color:var(--text-muted)">${agent.category || ""}</small></td>
+        <td>${dosePerKg} ${agent.unit}/kg</td>
+        <td class="dose-val">${doseDisplay}</td>
+        <td><small>
+          ⏱ ${agent.onset || "—"}<br>
+          ⏳ ${agent.duration || "—"}
+          ${agent.contraindications?.length ? `<br>⚠ ${agent.contraindications.length} contraindication(s)` : ""}
+        </small></td>
+      </tr>`;
+    }
+    html += `</tbody>`;
+    table.innerHTML = html;
+
+    // Click rows to show detail
+    table.querySelectorAll("tr").forEach((row, i) => {
+      if (i === 0) return;
+      row.style.cursor = "pointer";
+      row.addEventListener("click", () => {
+        const agent = agents[i - 1];
+        showDrugDetailModal(agent, weight, category);
+      });
+    });
+  }
+
+  function renderInfusionTable(tableId, agents) {
+    const table = document.getElementById(tableId);
+    if (!table) return;
+    let html = `<thead><tr><th>Infusion</th><th>Rate</th><th>Notes</th></tr></thead><tbody>`;
+    for (const agent of agents) {
+      html += `<tr>
+        <td><strong>${agent.name}</strong></td>
+        <td class="dose-val">${agent.doseRange}</td>
+        <td><small>${agent.warnings || "—"}</small></td>
+      </tr>`;
+    }
+    html += `</tbody>`;
+    table.innerHTML = html;
+  }
+
+  function showDrugDetailModal(agent, weight, category) {
+    const overlay = $("#emergencyOverlay");
+    const content = overlay.querySelector(".overlay-content");
+    const isPediatric = category === "pediatric" || category === "neonate";
+    const dosePerKg = isPediatric ? (agent.dosePerKg?.child || agent.dosePerKg?.adult) : agent.dosePerKg?.adult;
+    let dose = dosePerKg ? Calc.drugDose(dosePerKg, weight, agent.maxDose, agent.minDose) : null;
+
+    let html = `<h2>${agent.name}</h2>`;
+    if (dose !== null) html += `<div style="font-size:2rem;font-weight:800;color:var(--accent);margin:10px 0">${dose} ${agent.unit}</div>`;
+    html += `<dl class="drug-meta" style="text-align:left;width:100%">`;
+    if (agent.onset) { html += `<dt>Onset</dt><dd>${agent.onset}</dd>`; }
+    if (agent.duration) { html += `<dt>Duration</dt><dd>${agent.duration}</dd>`; }
+    if (agent.route) { html += `<dt>Route</dt><dd>${agent.route}</dd>`; }
+    if (dosePerKg) { html += `<dt>Dose/kg</dt><dd>${dosePerKg} ${agent.unit}/kg</dd>`; }
+    html += `</dl>`;
+    if (agent.contraindications?.length) {
+      html += `<div class="drug-warn" style="text-align:left;margin-top:14px"><strong>Avoid in:</strong><br>${agent.contraindications.join("<br>")}</div>`;
+    }
+    if (agent.warnings) {
+      html += `<div class="drug-warn" style="text-align:left;margin-top:8px;background:var(--amber-bg);border-color:rgba(255,183,77,.2);color:var(--amber)">${agent.warnings}</div>`;
+    }
+    html += `<button class="bigbtn ghost" style="margin-top:16px;width:100%" onclick="document.getElementById('emergencyOverlay').hidden=true">Close</button>`;
+    content.innerHTML = html;
+    overlay.hidden = false;
+  }
+
+  /* ========== FAILED AIRWAY ALGORITHM ========== */
+  function bindFailedAirway() {}
+
+  function renderFailedAirway() {
+    const flow = $("#failedFlow");
+    if (!flow) return;
+    const root = DATA.failedAirway.root;
+
+    let html = "";
+
+    // Root node
+    html += `<div class="flow-step expanded">
+      <div class="fs-title">🔴 ${root.question}</div>
+    </div>`;
+    html += `<div class="flow-arrow">↓</div>`;
+
+    // First branch: Can oxygenate?
+    const child = root.children[0];
+    html += `<div class="tree-node">
+      <div class="tree-question">${child.question}</div>
+      <div class="flow-branch">
+        <div class="branch-yes" id="faYes">✅ YES<br><small>${child.yes.action}</small></div>
+        <div class="branch-no" id="faNo">❌ NO<br><small>${child.no.action}</small></div>
+      </div>
+    </div>`;
+
+    // YES path (hidden initially)
+    html += `<div id="faYesPath" style="display:none">
+      <div class="tree-outcome green">
+        <strong>${child.yes.label}</strong><br>
+        ${child.yes.action}
+      </div>`;
+    for (const step of child.yes.steps) {
+      html += `<div class="flow-step"><div class="fs-detail" style="display:block">✅ ${step}</div></div>`;
+    }
+    html += `</div>`;
+
+    // NO path (hidden initially)
+    html += `<div id="faNoPath" style="display:none">
+      <div class="tree-outcome red">
+        <strong>${child.no.label}</strong><br>
+        ${child.no.action}
+      </div>`;
+
+    // Equipment checklist
+    if (child.no.checklist) {
+      html += `<div class="checklist-gate" style="border-color:var(--red)">
+        <h3>🔪 CICO Equipment Checklist</h3>`;
+      for (const item of child.no.checklist) {
+        html += `<div class="checklist-item" data-fa-check="${item.id}">
+          <div class="checklist-check"></div>
+          <span class="checklist-label">${item.label}</span>
+        </div>`;
+      }
+      html += `</div>`;
+    }
+
+    // Procedure steps
+    for (const step of child.no.steps) {
+      html += `<div class="flow-step">
+        <div class="fs-detail" style="display:block">🔪 ${step}</div>
+      </div>`;
+    }
+    html += `</div>`;
+
+    flow.innerHTML = html;
+
+    // Branch click handlers
+    const yesBtn = flow.querySelector("#faYes");
+    const noBtn = flow.querySelector("#faNo");
+    const yesPath = flow.querySelector("#faYesPath");
+    const noPath = flow.querySelector("#faNoPath");
+
+    yesBtn?.addEventListener("click", () => {
+      yesBtn.style.borderColor = "var(--green)";
+      yesBtn.style.background = "rgba(102,187,106,.2)";
+      yesPath.style.display = "block";
+      noPath.style.display = "none";
+      noBtn.style.borderColor = "";
+      noBtn.style.background = "";
+      RSI.timestamp("Failed airway: Can oxygenate — SGA strategy");
+    });
+
+    noBtn?.addEventListener("click", () => {
+      noBtn.style.borderColor = "var(--red)";
+      noBtn.style.background = "rgba(255,82,82,.2)";
+      noPath.style.display = "block";
+      yesPath.style.display = "none";
+      yesBtn.style.borderColor = "";
+      yesBtn.style.background = "";
+      RSI.timestamp("Failed airway: CICO — surgical cricothyrotomy");
+    });
+
+    // Checklist clicks in CICO path
+    flow.querySelectorAll("[data-fa-check]").forEach((el) => {
+      el.addEventListener("click", () => {
+        el.classList.toggle("checked");
+        const check = el.querySelector(".checklist-check");
+        check.textContent = el.classList.contains("checked") ? "✓" : "";
+      });
+    });
+  }
+
+  /* ========== CRICOTHYROTOMY ========== */
+  function bindCric() {
+    let cricStarted = false;
+    let cricStart = null;
+    let cricTimer = null;
+
+    $("#cricStart")?.addEventListener("click", () => {
+      if (cricStarted) return;
+      cricStarted = true;
+      cricStart = Date.now();
+      $("#cricStart").textContent = "RUNNING";
+      $("#cricStart").disabled = true;
+      RSI.timestamp("Cricothyrotomy started");
+      Voice.speak("Cricothyrotomy timer started");
+
+      cricTimer = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - cricStart) / 1000);
+        const m = String(Math.floor(elapsed / 60)).padStart(2, "0");
+        const s = String(elapsed % 60).padStart(2, "0");
+        $("#cricClock").textContent = `${m}:${s}`;
+      }, 1000);
+    });
+
+    // Render cric flow
+    const flow = $("#cricFlow");
+    if (flow) {
+      const steps = [
+        { title: "Position", detail: "Extend neck (unless C-spine injury). Identify cricothyroid membrane by palpation." },
+        { title: "Stabilize", detail: "Non-dominant hand stabilizes larynx. Thumb and middle finger on thyroid cartilage." },
+        { title: "Incision", detail: "Horizontal skin incision through skin and cricothyroid membrane with #10 or #20 blade." },
+        { title: "Dilate", detail: "Spread with tracheal hook or forceps. Or use bougie-guided technique." },
+        { title: "Insert tube", detail: "Insert 6.0 cuffed ETT or tracheostomy tube. Inflate cuff." },
+        { title: "Confirm", detail: "Confirm placement with ETCO₂ waveform. Connect to ventilator." },
+        { title: "Secure", detail: "Secure tube. Document procedure. Prepare for definitive airway." },
+      ];
+
+      flow.innerHTML = steps.map((s, i) => `
+        <div class="flow-step" data-cric-step="${i}">
+          <div class="fs-title">${i + 1}. ${s.title}</div>
+          <div class="fs-detail">${s.detail}</div>
+        </div>
+        ${i < steps.length - 1 ? '<div class="flow-connector"></div>' : ""}
+      `).join("");
+
+      flow.querySelectorAll("[data-cric-step]").forEach((el) => {
+        el.addEventListener("click", () => {
+          el.classList.toggle("expanded");
+          const detail = el.querySelector(".fs-detail");
+          detail.style.display = el.classList.contains("expanded") ? "block" : "none";
+          RSI.timestamp(`Cric step: ${el.querySelector(".fs-title").textContent}`);
+        });
+      });
+    }
+  }
+
+  /* ========== VENTILATOR PRESETS ========== */
+  function bindVentilatorScreen() {}
+
+  function renderVentilatorGrid() {
+    const grid = $("#ventGrid");
+    const detail = $("#ventDetail");
+    if (!grid) return;
+
+    grid.innerHTML = DATA.ventilatorPresets.map((p) => `
+      <div class="vent-card" data-vent="${p.id}">
+        <div class="vent-title">${p.name}</div>
+        <div class="vent-subtitle">${p.subtitle}</div>
+      </div>
+    `).join("");
+
+    grid.querySelectorAll("[data-vent]").forEach((el) => {
+      el.addEventListener("click", () => {
+        const preset = DATA.ventilatorPresets.find((p) => p.id === el.dataset.vent);
+        let html = `<h3>${preset.name} — Ventilator Settings</h3>`;
+        html += `<div class="vent-params">`;
+        for (const [k, v] of Object.entries(preset.params)) {
+          html += `<dt>${k.replace(/_/g, " ").toUpperCase()}</dt><dd>${v}</dd>`;
+        }
+        html += `</div>`;
+        if (preset.notes) html += `<p class="note" style="margin-top:12px">${preset.notes}</p>`;
+        html += `<button class="act ghost" style="margin-top:12px" onclick="document.getElementById('ventDetail').hidden=true">Close</button>`;
+        detail.innerHTML = html;
+        detail.hidden = false;
+      });
+    });
+  }
+
+  /* ========== AIRWAY CALCULATORS ========== */
+  function bindCalculatorsScreen() {
+    // IBW
+    const hInput = $("#cHeight");
+    const sSelect = $("#cSex");
+    const calcIBW = () => {
+      const h = parseFloat(hInput?.value);
+      if (!h) { $("#cIBWOut").textContent = "—"; return; }
+      const ibw = Calc.ibw(h, sSelect.value);
+      $("#cIBWOut").textContent = `IBW: ${ibw.toFixed(1)} kg`;
+    };
+    hInput?.addEventListener("input", calcIBW);
+    sSelect?.addEventListener("change", calcIBW);
+
+    // Tube size
+    const ageInput = $("#cAge");
+    const calcTube = () => {
+      const age = ageInput.value === "" ? null : parseFloat(ageInput.value);
+      const result = Calc.tubeSize(age, "adult");
+      if (result.uncuffed) {
+        $("#cTubeOut").innerHTML = `Uncuffed: ${result.uncuffed} mm &nbsp; Cuffed: ${result.cuffed} mm &nbsp; Depth: ${result.depth} cm<br><small style="color:var(--text-muted)">${result.note}</small>`;
+      } else {
+        $("#cTubeOut").textContent = `ETT: ${result.size} mm — Depth: ${result.depth} cm`;
+      }
+    };
+    ageInput?.addEventListener("input", calcTube);
+
+    // LMA
+    const lmaInput = $("#cLmaWeight");
+    const calcLMA = () => {
+      const w = parseFloat(lmaInput?.value);
+      if (!w) { $("#cLmaOut").textContent = "—"; return; }
+      const lma = Calc.lmaSize(w);
+      $("#cLmaOut").textContent = `LMA size: ${lma.size} (weight: ${lma.weight})`;
+    };
+    lmaInput?.addEventListener("input", calcLMA);
+
+    // LEMON
+    renderLEMONCalculator();
+
+    // Shock index
+    const hrInput = $("#cHR");
+    const sbpInput = $("#cSBP");
+    const dbpInput = $("#cDBP");
+    const calcShock = () => {
+      const hr = parseFloat(hrInput?.value);
+      const sbp = parseFloat(sbpInput?.value);
+      const dbp = parseFloat(dbpInput?.value);
+      if (!hr || !sbp || !dbp) { $("#cShockOut").textContent = "—"; return; }
+      const result = Calc.shockIndex(hr, sbp, dbp);
+      $("#cShockOut").innerHTML = `SI: <strong>${result.si}</strong> &nbsp; MAP: <strong>${result.map}</strong> mmHg<br><small>${result.interpretation}</small>`;
+    };
+    hrInput?.addEventListener("input", calcShock);
+    sbpInput?.addEventListener("input", calcShock);
+    dbpInput?.addEventListener("input", calcShock);
+
+    // Vasopressor rates
+    renderPressorCalculator();
+  }
+
+  function renderLEMONCalculator() {
+    const container = $("#cDASFlags");
+    if (!container) return;
+
+    const allCriteria = [
+      ...DATA.lemon.external,
+      ...DATA.lemon.look,
+      ...DATA.lemon.evaluate_3_3,
+      ...DATA.lemon.mallampati,
+      ...DATA.lemon.neck,
+      ...DATA.lemon.obstruction,
+    ];
+
+    container.innerHTML = allCriteria.map((c) =>
+      `<label><input type="checkbox" value="${c.id}"> ${c.label}</label>`
+    ).join("");
+
+    const updateScore = () => {
+      const flags = [];
+      container.querySelectorAll("input:checked").forEach((cb) => flags.push(cb.value));
+      const result = Calc.lemonScore(flags);
+
+      let colorClass = result.risk.color;
+      let html = `<div class="lemon-score-display ${colorClass}">
+        <div class="lemon-score-num">${result.score}</div>
+        <div>
+          <div class="lemon-score-label">${result.risk.label}</div>
+          <div class="lemon-score-rec">${result.risk.rec}</div>
+        </div>
+      </div>`;
+      $("#cDASOut").innerHTML = html;
+    };
+
+    container.querySelectorAll("input").forEach((cb) => cb.addEventListener("change", updateScore));
+    updateScore();
+  }
+
+  function renderPressorCalculator() {
+    const chipContainer = $("#cPressorChips");
+    if (!chipContainer) return;
+
+    chipContainer.innerHTML = DATA.vasopressors.map((v) =>
+      `<div class="chip" data-pressor="${v.id}">${v.name}</div>`
+    ).join("");
+
+    let selectedPressor = DATA.vasopressors[0];
+    chipContainer.querySelector(`[data-pressor="${selectedPressor.id}"]`)?.classList.add("active");
+
+    chipContainer.querySelectorAll("[data-pressor]").forEach((el) => {
+      el.addEventListener("click", () => {
+        chipContainer.querySelectorAll("[data-pressor]").forEach((c) => c.classList.remove("active"));
+        el.classList.add("active");
+        selectedPressor = DATA.vasopressors.find((v) => v.id === el.dataset.pressor);
+        calcPressor();
+      });
+    });
+
+    const calcPressor = () => {
+      const weight = parseFloat($("#cPressorWeight")?.value);
+      const conc = parseFloat($("#cPressorConc")?.value) || selectedPressor.conc;
+      if (!weight) { $("#cPressorOut").textContent = "—"; return; }
+
+      let html = `<strong>${selectedPressor.name}</strong> ${selectedPressor.defaultConc ? `(${selectedPressor.defaultConc})` : ""}<br>`;
+      for (const rate of selectedPressor.rates) {
+        const mlHr = Calc.pressorRate(rate.dose, weight, conc);
+        html += `${rate.label} (${rate.dose} mcg/kg/min): <strong>${mlHr} mL/hr</strong><br>`;
+      }
+      $("#cPressorOut").innerHTML = html;
+    };
+
+    $("#cPressorWeight")?.addEventListener("input", calcPressor);
+    $("#cPressorConc")?.addEventListener("input", calcPressor);
+  }
+
+  /* ========== CASE REPORTS ========== */
+  function bindReports() {
+    $("#reportCopy")?.addEventListener("click", () => {
+      const text = $("#reportOut")?.textContent;
+      if (text) {
+        navigator.clipboard.writeText(text).then(() => {
+          $("#reportCopy").textContent = "Copied!";
+          setTimeout(() => { $("#reportCopy").textContent = "Copy"; }, 2000);
+        }).catch(() => {
+          // Fallback for browsers without clipboard API
+          const ta = document.createElement("textarea");
+          ta.value = text;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand("copy");
+          document.body.removeChild(ta);
+          $("#reportCopy").textContent = "Copied!";
+          setTimeout(() => { $("#reportCopy").textContent = "Copy"; }, 2000);
+        });
+      }
+    });
+
+    $("#reportPrint")?.addEventListener("click", () => window.print());
+
+    $("#reportWord")?.addEventListener("click", () => {
+      const text = $("#reportOut")?.textContent;
+      if (!text) return;
+      const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>RSI Report</title><!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View></w:WordDocument></xml><![endif]--><style>@page{margin:65mm 12mm 12mm 12mm;}body{font-family:Consolas,monospace;font-size:9pt;line-height:1.4;color:#151515;margin:0;padding:0;white-space:pre-wrap;}h1{font-size:14pt;text-align:center;margin-bottom:12px;}</style></head><body><h1>Rapid Sequence Intubation — Procedure Report</h1>' + text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</body></html>';
+      const blob = new Blob(['\ufeff', html], {type:'application/msword'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'RSI_Report_' + new Date().toISOString().slice(0,10) + '.doc';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      $("#reportWord").textContent = "Saved!";
+      setTimeout(() => { $("#reportWord").textContent = "Word"; }, 2000);
+    });
+
+    $("#reportSave")?.addEventListener("click", async () => {
+      const state = RSI.getState();
+      const report = $("#reportOut")?.textContent;
+      if (!report) return;
+      const c = await Store.saveCase({
+        date: new Date().toISOString(),
+        mode: state.mode,
+        report,
+        timeline: state.timeline,
+        attempts: state.attempts,
+        drugs: state.drugRecord,
+      });
+      $("#reportSave").textContent = "Saved!";
+      setTimeout(() => { $("#reportSave").textContent = "Save Case"; }, 2000);
+      renderSavedCases();
+    });
+  }
+
+  async function renderReports() {
+    const state = RSI.getState();
+    const out = $("#reportOut");
+    if (!out) return;
+
+    // Generate report
+    const now = new Date();
+    let report = `RAPID SEQUENCE INTUBATION — PROCEDURE REPORT\n`;
+    report += `${"═".repeat(50)}\n\n`;
+
+    report += `Date: ${now.toLocaleDateString("en-GB")}\n`;
+    report += `Time: ${now.toLocaleTimeString("en-GB")}\n`;
+    report += `Mode: ${state.mode === "adult" ? "Adult" : "Pediatric"} RSI\n\n`;
+
+    // Indication
+    report += `INDICATION\n`;
+    report += `  ${state.fields.indication || "(not recorded)"}\n\n`;
+
+    // Airway assessment
+    report += `AIRWAY ASSESSMENT\n`;
+    const lemonFlags = state.lemonFlags || [];
+    if (lemonFlags.length > 0) {
+      const lemonResult = Calc.lemonScore(lemonFlags);
+      report += `  LEMON Score: ${lemonResult.score} — ${lemonResult.risk.label}\n`;
+      report += `  Recommendation: ${lemonResult.risk.rec}\n`;
+    } else {
+      report += `  (not formally assessed)\n`;
+    }
+    report += `\n`;
+
+    // Pre-oxygenation
+    report += `PRE-OXYGENATION\n`;
+    const preoxDecision = state.fields.decision_preoxygenation || state.fields.decision;
+    report += `  ${preoxDecision || "Standard 3-min 100% O₂"}\n\n`;
+
+    // Drugs
+    report += `DRUGS ADMINISTERED\n`;
+    if (state.drugRecord && state.drugRecord.length > 0) {
+      for (const d of state.drugRecord) {
+        report += `  ${d.name} ${d.dose || "—"}${d.unit || ""}\n`;
+      }
+    } else {
+      report += `  (none recorded)\n`;
+    }
+    report += `\n`;
+
+    // Timeline
+    report += `TIMELINE\n`;
+    if (state.timeline && state.timeline.length > 0) {
+      for (const t of state.timeline) {
+        report += `  ${t.clock}  ${t.event}\n`;
+      }
+    } else {
+      report += `  (no events recorded)\n`;
+    }
+    report += `\n`;
+
+    // Attempts
+    report += `LARYNGOSCOPY ATTEMPTS\n`;
+    report += `  Total attempts: ${(state.attempts || []).length}\n`;
+    for (const a of (state.attempts || [])) {
+      const dur = a.durationMs ? Math.round(a.durationMs / 1000) : "—";
+      report += `  Attempt ${a.attempt}: ${dur}s`;
+      if (a.clGrade) report += ` — CL Grade ${a.clGrade}`;
+      report += `\n`;
+    }
+    report += `\n`;
+
+    // Cormack-Lehane
+    const clGrade = state.fields.cl_grade;
+    if (clGrade) {
+      report += `CORMACK-LEHANE GRADE: ${clGrade}\n`;
+      if (state.fields.view_pct) report += `POGO: ${state.fields.view_pct}%\n`;
+      report += `\n`;
+    }
+
+    // Bougie
+    report += `BOUGIE: ${state.fields.bougie_used ? "Yes" : "No"}\n\n`;
+
+    // Tube details
+    report += `TUBE DETAILS\n`;
+    if (state.fields.ett_size) report += `  ETT size: ${state.fields.ett_size} mm\n`;
+    if (state.fields.ett_depth) report += `  Depth at teeth: ${state.fields.ett_depth} cm\n`;
+    report += `\n`;
+
+    // Confirmation
+    report += `TUBE CONFIRMATION\n`;
+    const confirmed = Object.entries(state.tubeConfirmed || {}).filter(([, v]) => v);
+    if (confirmed.length > 0) {
+      for (const [id] of confirmed) {
+        const item = DATA.tubeConfirmation.find((t) => t.id === id);
+        if (item) report += `  ✓ ${item.label}\n`;
+      }
+    } else {
+      report += `  (not recorded)\n`;
+    }
+    report += `\n`;
+
+    // Complications
+    report += `COMPLICATIONS\n`;
+    report += `  ${state.fields.complications || "None recorded"}\n\n`;
+
+    // Operator & Assistant
+    report += `OPERATOR: ${state.fields.operator || "(not recorded)"}\n`;
+    report += `ASSISTANT: ${state.fields.assistant || "(not recorded)"}\n\n`;
+
+    // Ventilator
+    const ventPreset = state.fields.ventilatorPreset;
+    if (ventPreset) {
+      const preset = DATA.ventilatorPresets.find((p) => p.id === ventPreset);
+      if (preset) {
+        report += `VENTILATOR PRESET: ${preset.name}\n`;
+        for (const [k, v] of Object.entries(preset.params)) {
+          report += `  ${k.replace(/_/g, " ").toUpperCase()}: ${v}\n`;
+        }
+        report += `\n`;
+      }
+    }
+
+    // Sedation
+    report += `POST-INTUBATION SEDATION\n`;
+    report += `  ${state.fields.sedation || "Per protocol"}\n\n`;
+
+    report += `${"═".repeat(50)}\n`;
+    report += `Generated by ER Airway Assistant v2.0\n`;
+    report += `Clinical reference tool — verify against institutional protocol.\n`;
+
+    out.textContent = report;
+
+    // Render saved cases
+    renderSavedCases();
+  }
+
+  async function renderSavedCases() {
+    const list = $("#savedCasesList");
+    if (!list) return;
+    const cases = await Store.listCases();
+    if (cases.length === 0) {
+      list.innerHTML = '<p class="note">No saved cases yet.</p>';
+      return;
+    }
+    list.innerHTML = cases.map((c) => `
+      <div class="case-item">
+        <div>
+          <strong>${c.mode === "adult" ? "Adult" : "Pediatric"} RSI</strong><br>
+          <span class="case-date">${new Date(c.date).toLocaleString("en-GB")}</span>
+        </div>
+        <div>
+          <button class="act ghost" data-view-case="${c.id}">View</button>
+          <button class="act ghost" data-del-case="${c.id}" style="color:var(--red)">✕</button>
+        </div>
+      </div>
+    `).join("");
+
+    list.querySelectorAll("[data-view-case]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const c = cases.find((x) => x.id === btn.dataset.viewCase);
+        if (c) {
+          $("#reportOut").textContent = c.report;
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+      });
+    });
+
+    list.querySelectorAll("[data-del-case]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        if (confirm("Delete this case?")) {
+          await Store.deleteCase(btn.dataset.delCase);
+          renderSavedCases();
+        }
+      });
+    });
+  }
+
+  /* ---- Public API ---- */
+  return { boot, navigateTo };
+})();
+
+/* ---- Start ---- */
+document.addEventListener("DOMContentLoaded", () => App.boot());
+</script>
+</body>
+</html>

@@ -1,0 +1,1170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=overlays-content">
+<meta name="theme-color" content="#0F2540">
+<title>T2D Navigator — Diabetes Clinical Decision Support</title>
+<link rel="manifest" href="../../manifest.json">
+<script src="../../shared/docx-lite.js" defer></script>
+<script src="../../shared/clinical-calc.js" defer></script>
+<link rel="icon" href="../../icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="../../icons/icon-192.png">
+<style>
+:root{
+  --navy:#0F2540;--navy2:#16324F;--teal:#0E7C86;--teal-l:#E4F3F3;--teal-d:#0a5e66;
+  --bg:#F4F7F8;--card:#FFFFFF;--line:#E1E7EA;
+  --green:#1E8E5A;--green-l:#E7F5EC;
+  --amber:#B4790E;--amber-l:#FBF1DC;
+  --red:#C1442E;--red-l:#FBEAE6;
+  --ink:#16232E;--muted:#5C6B78;
+  --r:14px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  -webkit-font-smoothing:antialiased}
+body{padding-bottom:76px}
+h1,h2,h3,h4{margin:0 0 6px;font-weight:700;letter-spacing:-.01em}
+p{margin:0 0 8px;line-height:1.45}
+button{font-family:inherit}
+.hide{display:none!important}
+
+header.app{position:sticky;top:0;z-index:20;background:var(--navy);color:#fff;
+  padding:12px 16px calc(10px + env(safe-area-inset-top,0px));
+  display:flex;align-items:center;justify-content:space-between;
+  box-shadow:0 2px 8px rgba(0,0,0,.15)}
+header.app .brand{display:flex;align-items:center;gap:10px}
+header.app .brand .mark{width:32px;height:32px;border-radius:9px;background:var(--teal);
+  display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px}
+header.app .brand .ttl{font-size:15px;font-weight:700;line-height:1.1}
+header.app .brand .sub{font-size:11px;color:#9FB4C6;font-weight:500}
+header.app .actions{display:flex;gap:8px}
+header.app button.icon{background:rgba(255,255,255,.1);border:none;color:#fff;
+  width:36px;height:36px;border-radius:10px;font-size:15px;cursor:pointer;transition:background .15s}
+
+main{padding:14px 14px 4px;max-width:720px;margin:0 auto}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.card h3{font-size:14px;color:var(--navy);text-transform:uppercase;letter-spacing:.04em;margin-bottom:10px}
+.card h3 .stepno{display:inline-block;background:var(--teal);color:#fff;width:20px;height:20px;
+  border-radius:50%;text-align:center;line-height:20px;font-size:11px;margin-right:8px}
+.muted{color:var(--muted);font-size:13px}
+.small{font-size:12px}
+
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0}
+.chip{border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:10px 16px;
+  font-size:13.5px;color:var(--ink);cursor:pointer;transition:.15s;font-weight:500}
+.chip:active{transform:scale(.97)}
+.chip.sel{background:var(--teal);border-color:var(--teal);color:#fff;font-weight:600}
+.chip.multi.sel{background:var(--navy2);border-color:var(--navy2)}
+
+.opt-list{display:flex;flex-direction:column;gap:8px}
+.opt{display:flex;align-items:flex-start;gap:10px;border:1.5px solid var(--line);
+  border-radius:12px;padding:12px 13px;cursor:pointer;transition:all .15s}
+.opt:active{transform:scale(.98)}
+.opt input{margin-top:3px;flex-shrink:0;width:18px;height:18px;accent-color:var(--teal)}
+.opt .t{font-size:14px;font-weight:600}
+.opt .d{font-size:12.5px;color:var(--muted);margin-top:2px}
+.opt.sel{border-color:var(--teal);background:var(--teal-l)}
+
+.row{display:flex;gap:10px}
+.row>*{flex:1}
+label.field{display:block;margin-bottom:10px}
+label.field .lbl{font-size:12.5px;color:var(--muted);font-weight:600;margin-bottom:4px;display:block}
+input[type=number],input[type=text],input[type=datetime-local],select,textarea{
+  width:100%;padding:11px 13px;border:1.5px solid var(--line);border-radius:10px;
+  font-size:15px;background:#fff;color:var(--ink);font-family:inherit;
+  transition:border-color .15s,box-shadow .15s}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 3px rgba(14,124,134,.12)}
+input.invalid{border-color:var(--red)!important}
+textarea{resize:vertical;min-height:60px}
+.validation-msg{color:var(--red);font-size:12px;margin-top:3px;display:none}
+.validation-msg.show{display:block}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  background:var(--teal);color:#fff;border:none;border-radius:12px;padding:13px 18px;
+  font-size:14.5px;font-weight:700;cursor:pointer;width:100%;transition:.15s}
+.btn:active{transform:scale(.985)}
+.btn.ghost{background:#fff;color:var(--navy);border:1.5px solid var(--line)}
+.btn.sm{width:auto;padding:9px 14px;font-size:13px;border-radius:10px}
+.btn.red{background:var(--red)}
+.btn.amber{background:var(--amber)}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap}
+.btn-row .btn{flex:1;min-width:0}
+
+.tag{display:inline-block;font-size:11px;font-weight:700;padding:4px 10px;border-radius:999px;text-transform:uppercase;letter-spacing:.03em}
+.tag.green{background:var(--green-l);color:var(--green)}
+.tag.amber{background:var(--amber-l);color:var(--amber)}
+.tag.red{background:var(--red-l);color:var(--red)}
+.tag.navy{background:var(--teal-l);color:var(--teal)}
+
+.result{border-left:4px solid var(--teal);background:var(--teal-l);border-radius:0 14px 14px 0;padding:14px 16px;margin:10px 0}
+.result.warn{border-color:var(--amber);background:var(--amber-l)}
+.result.danger{border-color:var(--red);background:var(--red-l)}
+.result h4{color:var(--navy);font-size:13.5px;margin-bottom:4px}
+.result ul,.result p{margin:4px 0 0;padding-left:18px;font-size:13.5px}
+.result li{margin-bottom:3px}
+
+.divider{height:1px;background:var(--line);margin:12px 0}
+
+table.ref{width:100%;border-collapse:collapse;font-size:12.5px}
+table.ref th,table.ref td{border:1px solid var(--line);padding:8px 9px;text-align:left;vertical-align:top}
+table.ref th{background:var(--navy);color:#fff;font-size:11px;text-transform:uppercase}
+.cell-green{background:var(--green-l);color:var(--green);font-weight:600}
+.cell-amber{background:var(--amber-l);color:var(--amber);font-weight:600}
+.cell-red{background:var(--red-l);color:var(--red);font-weight:600}
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:10px}
+
+.regimen-list{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.regimen-item{display:flex;align-items:center;gap:8px;padding:10px 12px;
+  background:var(--teal-l);border:1px solid var(--teal);border-radius:12px;font-size:13px;animation:slideIn .25s ease}
+.regimen-item.custom{background:var(--amber-l);border-color:var(--amber)}
+.regimen-item .drug-info{flex:1}
+.regimen-item .drug-name{font-weight:700;color:var(--navy)}
+.regimen-item .drug-detail{font-size:12px;color:var(--muted)}
+.regimen-item .remove-btn{background:none;border:none;color:var(--red);cursor:pointer;font-size:16px;padding:2px 6px;border-radius:4px;line-height:1}
+@keyframes slideIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+
+.drug-panel{background:var(--teal-l);border:1.5px solid var(--teal);border-radius:14px;padding:14px;margin-top:8px;display:none;animation:slideIn .2s ease}
+.drug-panel.show{display:block}
+.drug-panel.custom-panel{background:var(--amber-l);border-color:var(--amber)}
+
+.template-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px;padding:12px;background:var(--bg);border-radius:12px}
+.template-bar select{flex:1;min-width:0;font-size:13px;padding:7px 10px}
+.template-bar .btn{font-size:12px;padding:7px 10px}
+
+.flowchart{display:flex;align-items:center;gap:0;padding:8px 0;overflow-x:auto;justify-content:center;flex-wrap:wrap}
+.flow-step{display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 12px;
+  border:2px solid var(--line);border-radius:12px;background:#fff;min-width:100px;text-align:center;transition:.2s}
+.flow-step .step-num{width:24px;height:24px;border-radius:50%;background:var(--line);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;transition:.2s}
+.flow-step .step-label{font-size:10px;font-weight:600;color:var(--muted)}
+.flow-step.active{border-color:var(--teal);background:var(--teal-l)}
+.flow-step.active .step-num{background:var(--teal)}
+.flow-step.active .step-label{color:var(--teal-d)}
+.flow-arrow{font-size:1rem;color:var(--muted);padding:0 .2rem;flex-shrink:0}
+
+.note-print{font-family:Georgia,'Times New Roman',serif;font-size:13px;line-height:1.7;color:var(--ink);
+  background:#fff;padding:20px;border:1.5px solid var(--line);border-radius:12px}
+.note-print h3{font-size:14px;font-weight:700;color:var(--navy);border-bottom:1.5px solid var(--teal);
+  padding-bottom:4px;margin:14px 0 8px}
+.note-print h3:first-child{margin-top:0}
+.note-print .entry{padding:3px 0;border-bottom:1px dotted var(--line)}
+.note-print .sig{margin-top:24px;border-top:1px solid var(--muted);padding-top:6px;font-style:italic;color:var(--muted)}
+.note-print.handwritten,.note-print.handwritten *{font-family:var(--hw-font,'Kalam'),cursive !important;}
+.note-print.handwritten{font-size:19px;line-height:1.55}
+.note-print.handwritten h3{font-size:19px}
+
+.slider-group{display:flex;align-items:center;gap:8px;margin:8px 0;font-size:13px;color:var(--muted)}
+.slider-group input[type=range]{flex:1;accent-color:var(--teal);max-width:180px;height:6px}
+.slider-group .slider-val{min-width:3rem;text-align:center;font-weight:700;color:var(--teal)}
+
+.calc-out{background:var(--navy);color:#fff;border-radius:14px;padding:16px;margin-top:8px}
+.calc-out .big{font-size:28px;font-weight:800}
+.calc-out .lbl{font-size:11px;color:#9FB4C6;text-transform:uppercase;letter-spacing:.04em}
+
+.subtabs{display:flex;gap:6px;overflow-x:auto;margin-bottom:12px;padding-bottom:2px}
+.subtabs button{flex-shrink:0;border:1.5px solid var(--line);background:#fff;border-radius:999px;
+  padding:8px 14px;font-size:12.5px;font-weight:600;color:var(--muted);cursor:pointer;transition:all .15s}
+.subtabs button:active{transform:scale(.95)}
+.subtabs button.active{background:var(--navy);border-color:var(--navy);color:#fff}
+
+.install-banner{background:var(--navy);color:#fff;padding:12px 16px;display:none;align-items:center;gap:10px;font-size:13px}
+.install-banner.show{display:flex}
+.install-banner button{background:var(--teal);color:#fff;border:none;padding:8px 16px;border-radius:10px;font-weight:700;cursor:pointer;transition:background .15s}
+.install-banner .dismiss{background:transparent;color:#fff;opacity:.6;margin-left:auto}
+
+nav.tabbar{position:fixed;bottom:0;left:0;right:0;background:#fff;
+  border-top:1px solid var(--line);display:flex;z-index:30;
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  box-shadow:0 -2px 12px rgba(0,0,0,.06)}
+nav.tabbar button{flex:1;background:none;border:none;padding:10px 2px 8px;
+  display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--muted);font-size:10px;font-weight:600;cursor:pointer;
+  transition:color .15s,transform .1s;position:relative}
+nav.tabbar button:active{transform:scale(.92)}
+nav.tabbar button .ic{font-size:20px;line-height:1}
+nav.tabbar button.active{color:var(--teal)}
+nav.tabbar button.active::after{content:'';position:absolute;top:0;left:25%;right:25%;height:2.5px;background:var(--teal);border-radius:0 0 3px 3px}
+
+.toast{position:fixed;bottom:88px;left:50%;transform:translateX(-50%);background:var(--navy);
+  color:#fff;padding:12px 20px;border-radius:999px;font-size:13px;font-weight:600;z-index:50;
+  opacity:0;pointer-events:none;transition:opacity .25s;max-width:80vw;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,.2)}
+.toast.show{opacity:1}
+
+.lab-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+@media(max-width:480px){.lab-grid{grid-template-columns:1fr}}
+.lab-item{display:flex;align-items:center;gap:8px;padding:10px 12px;border:1.5px solid var(--line);border-radius:12px;cursor:pointer;font-size:13px;transition:all .15s}
+.lab-item:active{transform:scale(.97)}
+.lab-item.sel{border-color:var(--teal);background:var(--teal-l)}
+.lab-item input{accent-color:var(--teal);width:16px;height:16px}
+.custom-lab-row{display:flex;gap:8px;margin-top:8px;align-items:center}
+.custom-lab-row input{flex:1}
+
+@media print{
+  body{background:#fff;padding-bottom:0}
+  header.app,.install-banner,nav.tabbar,.no-print{display:none!important}
+  .note-print{border:none;padding:0}
+  main{max-width:100%;padding:0}
+}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
+</style>
+</head>
+<body>
+
+<header class="app">
+  <div class="brand">
+    <div class="mark">Dx</div>
+    <div>
+      <div class="ttl">T2D Navigator</div>
+      <div class="sub" id="caseLabel">No active case</div>
+    </div>
+  </div>
+  <div class="actions">
+    <a href="../../index.html" class="icon" title="Back to ED Suite" aria-label="Back to ED Suite" style="text-decoration:none;display:flex;align-items:center;justify-content:center;transition:background .15s">⌂</a>
+    <button class="icon" id="newCaseBtn" title="New case" aria-label="Start new case" style="transition:background .15s">＋</button>
+  </div>
+</header>
+
+<div class="install-banner" id="installBanner">
+  <span>📱 <strong>Install this app</strong> for offline access</span>
+  <button id="installBtn">Install</button>
+  <button class="dismiss" id="dismissBtn">✕</button>
+</div>
+
+<main id="app"></main>
+<div class="toast" id="toast"></div>
+
+<nav class="tabbar" id="tabbar" role="tablist" aria-label="T2D Navigator sections">
+  <button data-view="patient" role="tab" aria-label="Patient tab"><span class="ic">👤</span>Patient</button>
+  <button data-view="classify" role="tab" aria-label="Classify tab"><span class="ic">🔍</span>Classify</button>
+  <button data-view="pathway" role="tab" aria-label="Pathway tab"><span class="ic">🧭</span>Pathway</button>
+  <button data-view="drugs" role="tab" aria-label="Drugs tab"><span class="ic">💊</span>Drugs</button>
+  <button data-view="regimen" role="tab" aria-label="Regimen tab"><span class="ic">📋</span>Regimen</button>
+  <button data-view="insulin" role="tab" aria-label="Insulin tab"><span class="ic">💉</span>Insulin</button>
+  <button data-view="labs" role="tab" aria-label="Labs tab"><span class="ic">🔬</span>Labs</button>
+  <button data-view="note" role="tab" aria-label="Note tab"><span class="ic">📝</span>Note</button>
+</nav>
+
+
+
+<script>
+/* ====================================================================
+   T2D NAVIGATOR v2 — Combined Clinical Decision Support Tool
+   Features: Classify, Pathway, Drugs, Regimen+Templates+Custom,
+   Insulin, Labs, Notes with eGFR/BMI/Copy/PDF
+   ==================================================================== */
+
+// ===================== DRUG DATABASE =====================
+const DRUGS={
+  metformin:{name:"Metformin",cls:"Biguanide",efficacy:"++ (~1-1.5% A1c)",
+    ascvd_mace:"",ascvd_stroke:"",chf:"",ckd:"",
+    renal:{level:"amber",text:"Decrease dose eGFR 30-45"},
+    renal2:{level:"red",text:"Contraindicated eGFR <30"},
+    hypo:"Low",weight:"Slight loss",masld:"",gi:{level:"amber",text:"Mild-moderate GI upset"},
+    other:"",cost:"$",
+    dosing:"IR: 500 mg OD-BID with meals, ↑ weekly by 500 mg to max 2000-2550 mg/day.\nXR: 500 mg OD with evening meal, ↑ weekly to max 2000 mg OD."},
+  glp1:{name:"GLP-1 RA",cls:"liraglutide / dulaglutide / semaglutide",efficacy:"++/+++ (~1-1.8%)",
+    ascvd_mace:{level:"green",text:"Benefit"},ascvd_stroke:{level:"green",text:"Benefit"},
+    chf:{level:"green",text:"Potential benefit (HFpEF)"},ckd:{level:"green",text:"Benefit"},
+    renal:{level:"amber",text:"Exenatide: caution eGFR 30-45"},renal2:{level:"red",text:"Exenatide contraindicated eGFR <30"},
+    hypo:"Low (alone)",weight:"Loss",masld:{level:"green",text:"Benefit"},
+    gi:{level:"amber",text:"Moderate - titrate slowly"},other:"MTC/MEN2: avoid",cost:"$$$",
+    dosing:"Liraglutide SC: 0.6 mg OD x1wk → 1.2 mg (max 1.8 mg)\nDulaglutide SC: 0.75 mg/wk → 1.5 mg (max 4.5 mg)\nSemaglutide SC: 0.25 mg/wk x4w → 0.5 → 1 mg\nSemaglutide oral: 3 mg OD x30d → 7 mg → 14 mg"},
+  giptirz:{name:"GIP/GLP-1 RA",cls:"Tirzepatide",efficacy:"++/++++ (~2%+)",
+    ascvd_mace:{level:"green",text:"Benefit"},ascvd_stroke:{level:"green",text:"Benefit"},
+    chf:{level:"green",text:"Potential benefit"},ckd:{level:"green",text:"Benefit"},
+    renal:{level:"amber",text:"Check drug-specific eGFR thresholds"},
+    hypo:"Low (alone)",weight:"Loss",masld:{level:"amber",text:"Potential benefit"},
+    gi:{level:"amber",text:"Moderate - titrate slowly"},other:"OSA benefit; MTC/MEN2: avoid",cost:"$$$",
+    dosing:"SC 2.5 mg/wk x4w → 5 mg; ↑ by 2.5 mg/4wk to max 15 mg/wk."},
+  sglt2i:{name:"SGLT2i",cls:"empagliflozin / dapagliflozin / canagliflozin",efficacy:"+/++ (~0.5-1%)",
+    ascvd_mace:{level:"green",text:"Benefit"},ascvd_stroke:{level:"green",text:"Benefit"},
+    chf:{level:"green",text:"Benefit"},ckd:{level:"green",text:"Benefit"},
+    renal:{level:"amber",text:"↓ glycemic efficacy at lower eGFR"},
+    hypo:"Low",weight:"Mild loss",masld:{level:"amber",text:"Potential benefit"},
+    gi:"",other:"GU infections, euglycemic DKA risk",cost:"$$$",
+    dosing:"Empagliflozin 10 mg OD (max 25 mg)\nDapagliflozin 10 mg OD\nCanagliflozin 100 mg OD (max 300 mg)"},
+  tzd:{name:"TZD",cls:"Pioglitazone",efficacy:"++ (~1-1.5%)",
+    ascvd_stroke:{level:"green",text:"Benefit"},chf:{level:"red",text:"Contraindicated NYHA III/IV"},
+    hypo:"Low",weight:{level:"amber",text:"Gain (fluid)"},masld:{level:"amber",text:"Potential benefit"},
+    other:{level:"amber",text:"↑ fracture risk"},cost:"$",
+    dosing:"Pioglitazone 15-30 mg OD, max 45 mg OD."},
+  dpp4i:{name:"DPP-4i",cls:"sitagliptin / linagliptin / saxagliptin / alogliptin",efficacy:"+/++ (~0.5-0.8%)",
+    chf:{level:"amber",text:"Saxa/alogliptin: ↑ CHF risk"},renal:{level:"amber",text:"Adjust dose (except linagliptin)"},
+    hypo:"Low",weight:"Neutral",masld:{level:"amber",text:"Potential benefit"},
+    other:{level:"amber",text:"Rare arthralgia"},cost:"$-$$",
+    dosing:"Sitagliptin 100 mg OD (renal-adjust)\nLinagliptin 5 mg OD\nSaxagliptin 5 mg OD (avoid in HF)\nAlogliptin 25 mg OD (avoid in HF)"},
+  su:{name:"Sulfonylurea",cls:"gliclazide / glimepiride / glipizide",efficacy:"++/+++ (~1-1.5%)",
+    hypo:{level:"amber",text:"Moderate-high; higher in CKD/elderly"},weight:{level:"amber",text:"Gain"},cost:"$",
+    dosing:"Gliclazide MR 30-120 mg OD\nGlimepiride 1-4 mg OD (max 8 mg)\nGlipizide 2.5-20 mg/day"},
+  gln:{name:"Glinide",cls:"Repaglinide",efficacy:"+/++",hypo:{level:"amber",text:"Low-moderate"},cost:"$-$$",
+    dosing:"Repaglinide 0.5-4 mg with each main meal (up to TDS)."},
+  agi:{name:"AGI",cls:"Acarbose",efficacy:"+/++",
+    renal:{level:"red",text:"Contraindicated eGFR <25"},gi:{level:"amber",text:"Flatulence, bloating"},cost:"$-$$",
+    dosing:"Acarbose 50 mg TDS with first bite of meal, max 100 mg TDS."},
+  insulin:{name:"Insulin",efficacy:"++++ (unlimited)",
+    ascvd_mace:"",ascvd_stroke:"",
+    chf:{level:"amber",text:"Moderate"},ckd:"",
+    renal:{level:"amber",text:"↑ hypo risk as eGFR falls — reduce dose, monitor closely"},
+    hypo:{level:"amber",text:"Moderate-high"},weight:{level:"amber",text:"Gain"},
+    masld:{level:"green",text:"Potential benefit"},gi:"",other:"",cost:"$-$$$",
+    dosing:"See Insulin module for basal/bolus initiation & titration."}
+};
+
+const REGIMEN_DRUGS=[
+  "Metformin Immediate Release","Metformin Extended Release (XR)",
+  "Metformin + Sulfonylurea (Amaryl MSR)","Getryl 2–4 mg",
+  "Diamicron MR 30 mg","Diamicron MR 60 mg",
+  "Empagliflozin","Empagliflozin + Metformin",
+  "Empagliflozin + Linagliptin","Empagliflozin + Metformin XR + Linagliptin",
+  "Vildagliptin","Sitagliptin","Vildagliptin + Metformin",
+  "Sitagliptin + Metformin","Repaglinide"
+];
+const BRAND_MAP={
+  "Metformin Immediate Release":"Glucophage","Metformin Extended Release (XR)":"Glumetza / Glucophage XR",
+  "Metformin + Sulfonylurea (Amaryl MSR)":"Amaryl MSR","Getryl 2–4 mg":"Getryl",
+  "Diamicron MR 30 mg":"Diamicron MR","Diamicron MR 60 mg":"Diamicron MR",
+  "Empagliflozin":"Jardiance","Empagliflozin + Metformin":"Synjardy",
+  "Empagliflozin + Linagliptin":"Glyxambi","Empagliflozin + Metformin XR + Linagliptin":"Trijardy XR",
+  "Vildagliptin":"Galvus","Sitagliptin":"Januvia",
+  "Vildagliptin + Metformin":"Eucreas","Sitagliptin + Metformin":"Janumet","Repaglinide":"Glucorm"
+};
+const CUSTOM_DRUG_CATEGORIES=["Antihypertensive","Statin","Antiplatelet / Aspirin","Anticoagulant","Thyroid","PPI / GI","Antidepressant","Analgesic","Antibiotic","Other"];
+
+const PATHWAY_INFO={none:{label:"No relevant comorbidities"},obesity:{label:"Obesity"},
+  ckd:{label:"Chronic kidney disease"},earlyonset:{label:"Early-onset T2D"},
+  hf:{label:"Heart failure"},ascvd:{label:"ASCVD"},frailty:{label:"Frailty"}};
+const COM_OPTIONS=["none","obesity","ckd","earlyonset","hf","ascvd","frailty"];
+
+const GL_SCENARIOS=[
+  {key:"severe",label:"Severe hyperglycaemia",d:"A1C >10% and/or glucose >300 mg/dL with symptoms"},
+  {key:"hyporisk",label:"↑ Hypoglycaemia risk"},{key:"obesity",label:"Overweight / obesity"},
+  {key:"cost",label:"↓ Access / need for ↓ cost"}
+];
+const GL_PREFERRED={
+  severe:{pref:"Basal insulin + prandial insulin, or + GLP-1 RA / GIP-GLP-1 RA.",avoid:"Avoid GLP-1 RA alone initially."},
+  hyporisk:{pref:"Metformin, SGLT2i, GLP-1 RA, DPP-4i, TZD.",avoid:"SU, glinide (higher hypo risk)."},
+  obesity:{pref:"GLP-1 RA or GIP/GLP-1 RA, SGLT2i, metformin.",avoid:"TZD, SU, glinide (weight gain)."},
+  cost:{pref:"Metformin, TZD, glinide, SU, AGI.",avoid:"DPP-4i, SGLT2i, GLP-1 RA."}
+};
+
+const CLASS_T2D_FEATURES=["Overweight/obesity (BMI adjusted for ethnicity)","Family history / social determinants consistent with T2D","Personal history of gestational diabetes","Signs of insulin resistance (acanthosis nigricans, skin tags)","Elevated triglycerides, low HDL-C"];
+const CLASS_OTHER_FLAGS=[
+  {key:"dka",label:"DKA at presentation"},{key:"autoimm",label:"Autoimmunity (thyroid, coeliac, vitiligo)"},
+  {key:"leanIR",label:"Phenotype without insulin resistance ± lean"},{key:"famT1D",label:"Family history of T1D"},
+  {key:"checkpoint",label:"On checkpoint inhibitor therapy"},{key:"endocrinopathy",label:"Features of another endocrinopathy"},
+  {key:"pancreatic",label:"Anatomic pancreatic disease"},{key:"monogenic",label:"Monogenic diabetes suspicion"},
+  {key:"medication",label:"Glucocorticoid / post-transplant induced"},{key:"other",label:"Mitochondrial / lipodystrophy"}
+];
+
+const BEHAVIORS=[
+  {name:"Sitting / breaking up prolonged sitting",tip:"Break sitting every 30 min with short walking / resistance bouts.",
+   impact:{glucose:"down",bp:"down",a1c:"down",lipids:"down",physfn:"up",depression:"down",qol:"up"},evidence:"strong"},
+  {name:"Stepping",tip:"+500 steps/day → 2-9% ↓ CV morbidity & mortality.",
+   impact:{glucose:"down",bp:"down",a1c:"down",lipids:"down",physfn:"up",depression:"down",qol:"up"},evidence:"strong"},
+  {name:"Sweating (moderate-vigorous activity)",tip:"≥150 min/wk moderate OR ≥75 min/wk vigorous, ≥3 days/wk.",
+   impact:{glucose:"down",bp:"down",a1c:"down",lipids:"down",physfn:"up",depression:"down",qol:"up"},evidence:"medium"},
+  {name:"Strengthening",tip:"Resistance exercise 2-3 sessions/wk.",
+   impact:{glucose:"down",bp:"down",a1c:"down",lipids:"down",physfn:"up",depression:"down",qol:"na"},evidence:"medium"},
+  {name:"Adequate sleep duration",tip:"Both long (>8h) and short (<6h) sleep negatively impact A1c.",
+   impact:{glucose:"down",bp:"down",a1c:"down",lipids:"down",physfn:"na",depression:"na",qol:"na"},evidence:"medium"},
+  {name:"Good sleep quality",tip:"Poor sleep worsens glycaemic control — screen for OSA.",
+   impact:{glucose:"down",bp:"down",a1c:"down",lipids:"down",physfn:"na",depression:"na",qol:"up"},evidence:"strong"}
+];
+
+// Default lab panels
+const DEFAULT_LABS=[
+  {key:"hba1c",label:"HbA1c"},{key:"fpg",label:"Fasting Plasma Glucose"},
+  {key:"ppg",label:"Post-Prandial Glucose"},{key:"lipid",label:"Lipid Profile (TC, TG, LDL, HDL)"},
+  {key:"egfr",label:"eGFR / Creatinine"},{key:"uacr",label:"Urine Albumin-Creatinine Ratio (uACR)"},
+  {key:"lft",label:"Liver Function (ALT, AST)"},{key:"tsh",label:"TSH"},
+  {key:"cbc",label:"Complete Blood Count"},{key:"electrolytes",label:"Electrolytes (Na, K, Ca)"},
+  {key:"uric_acid",label:"Uric Acid"},{key:"vitd",label:"Vitamin D"},
+  {key:"b12",label:"Vitamin B12 (if on Metformin)"},{key:"eye",label:"Fundoscopy / Eye Exam"},
+  {key:"foot",label:"Foot Examination"},{key:"ecg",label:"ECG"},
+  {key:"echo",label:"Echocardiography"},{key:"usg",label:"Ultrasound Abdomen"}
+];
+
+// ===================== STATE =====================
+const STORAGE_KEY='t2dm_navigator_state';
+let state=loadState();
+
+function defaultState(){
+  return{
+    caseName:"",createdAt:new Date().toISOString(),
+    patient:{name:"",age:"",gender:"",datetime:"",weight:"",height:"",heightRaw:"",heightUnit:"cm",bp:"",findings:"",creatinine:""},
+    classify:{t2d:[false,false,false,false,false],flags:{},result:null},
+    pathway:{
+      framework:"comorbidity",
+      com:{selected:[],priority:"",ckdEgfr:"",frailtyRisk:""},
+      gl:{a1c:"",scenarios:[],hypoRiskTarget:false}
+    },
+    regimen:[],
+    templates:[],
+    insulin:{weight:"",a1c:"",basalLow:null,basalHigh:null,currentBasal:"",fbg:"",
+      beamBedtime:"",beamFasting:"",prandialMethod:"",tdd:"",bolus:"",adjNotes:""},
+    labs:{selected:[],customLabs:[]},
+    planSelected:{},
+    egfr:"",
+    drugsFilter:"all",
+    borderMargin:20,
+    handwritten:false,
+    handwrittenFont:"kalam",
+    noteGenerated:false
+  };
+}
+function loadState(){
+  try{
+    const s=JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if(s){
+      // Migration: add missing fields
+      if(!s.templates)s.templates=[];
+      if(!s.labs)s.labs={selected:[],customLabs:[]};
+      if(!s.planSelected)s.planSelected={};
+      if(!s.egfr&&s.egfr!=="")s.egfr="";
+      if(s.patient&&!s.patient.height)s.patient.height="";
+      if(s.patient&&s.patient.creatinine===undefined)s.patient.creatinine="";
+      if(!s.handwrittenFont)s.handwrittenFont="kalam";
+      return s;
+    }
+  }catch(e){}
+  return defaultState();
+}
+function saveState(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state))}catch(e){}syncHeader()}
+function syncHeader(){document.getElementById('caseLabel').textContent=state.caseName?('Case: '+state.caseName):'No active case'}
+
+let currentView='classify';
+
+// ===================== INIT =====================
+document.addEventListener('DOMContentLoaded',()=>{
+  syncHeader();
+  if(!state.patient.datetime){
+    const now=new Date();const off=now.getTimezoneOffset();
+    state.patient.datetime=new Date(now.getTime()-off*60000).toISOString().slice(0,16);saveState();
+  }
+  document.getElementById('tabbar').addEventListener('click',e=>{const b=e.target.closest('button[data-view]');if(b)switchView(b.dataset.view)});
+  document.getElementById('newCaseBtn').addEventListener('click',()=>{
+    if(confirm('Start a new case? This clears all data.')){state=defaultState();const now=new Date();state.patient.datetime=new Date(now.getTime()-now.getTimezoneOffset()*60000).toISOString().slice(0,16);saveState();switchView('patient')}
+  });
+  let dp=null;
+  window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('installBanner').classList.add('show')});
+  window.addEventListener('appinstalled',()=>{document.getElementById('installBanner').classList.remove('show');dp=null});
+  document.getElementById('installBtn').addEventListener('click',()=>{if(!dp)return;dp.prompt();dp.userChoice.then(r=>{if(r.outcome==='accepted')toast('App installed!');dp=null;document.getElementById('installBanner').classList.remove('show')})});
+  document.getElementById('dismissBtn').addEventListener('click',()=>{document.getElementById('installBanner').classList.remove('show')});
+  // Register service worker for offline PWA
+  if('serviceWorker' in navigator){navigator.serviceWorker.register('../../sw.js').catch(()=>{})}
+  switchView('patient');
+});
+
+function switchView(v){
+  currentView=v;
+  document.querySelectorAll('#tabbar button').forEach(b=>{const on=b.dataset.view===v;b.classList.toggle('active',on);b.setAttribute('aria-selected',on?'true':'false')});
+  const map={patient:renderPatient,classify:renderClassify,pathway:renderPathway,drugs:renderDrugs,
+    regimen:renderRegimen,insulin:renderInsulin,labs:renderLabs,note:renderNote};
+  map[v](document.getElementById('app'));
+  window.scrollTo({top:0});
+}
+
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000)}
+
+function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')}
+function escAttr(s){return(s||'').replace(/"/g,'&quot;')}
+function stripHtml(s){return(s||'').replace(/<[^>]+>/g,'')}
+function levelClass(l){return l==='green'?'cell-green':l==='amber'?'cell-amber':l==='red'?'cell-red':''}
+function cell(obj){if(!obj)return'<td>&mdash;</td>';if(typeof obj==='string')return`<td>${obj||'&mdash;'}</td>`;return`<td class="${levelClass(obj.level)}">${obj.text}</td>`}
+function arrowIcon(v){if(v==='down')return'<span style="color:var(--green);font-weight:800">↓</span>';if(v==='up')return'<span style="color:var(--green);font-weight:800">↑</span>';return'<span class="muted">—</span>'}
+function formatDateTime(dtStr){try{const d=new Date(dtStr);return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})+' '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}catch{return dtStr}}
+function calcBMI(w,h){if(!w||!h)return null;if(window.ClinicalCalc)return ClinicalCalc.calcBMI(w,h);const hm=h/100;return(w/(hm*hm)).toFixed(1)}
+function bmiClass(b){if(!b)return'';if(b<18.5)return'underweight';if(b<25)return'normal';if(b<30)return'overweight';return'obese'}
+function bmiTag(b){const c=bmiClass(b);if(!c)return'';const map={underweight:['Underweight','amber'],normal:['Normal','green'],overweight:['Overweight','amber'],obese:['Obese','red']};const[l,cl]=map[c];return`<span class="tag ${cl}">${l}</span>`}
+
+// eGFR drug warnings
+function getEgfrWarnings(){
+  const e=parseFloat(state.egfr);if(isNaN(e))return[];
+  const w=[];
+  if(e<30)w.push({level:"red",text:"eGFR <30: Metformin CONTRAINDICATED. Avoid acarbose. Adjust DPP-4i (except linagliptin)."});
+  else if(e<45)w.push({level:"amber",text:"eGFR 30-45: Reduce metformin dose. SGLT2i glycemic efficacy ↓. Consider linagliptin (no renal adjustment)."});
+  else if(e<60)w.push({level:"amber",text:"eGFR <60: Monitor renal function closely. Consider dose adjustments per SmPC."});
+  return w;
+}
+
+// ===================== 1. CLASSIFY =====================
+function renderClassify(root){
+  const s=state.classify;
+  root.innerHTML=`
+    <div class="card">
+      <p class="muted small">Diagnosis confirmed by A1C ≥6.5%, FPG ≥126 mg/dL, 2h-OGTT ≥200 mg/dL, or random glucose ≥200 mg/dL + symptoms.</p>
+      <h3><span class="stepno">1</span>Features supporting T2D phenotype</h3>
+      <div class="opt-list">${CLASS_T2D_FEATURES.map((f,i)=>`
+        <label class="opt ${s.t2d[i]?'sel':''}"><input type="checkbox" data-t2d="${i}" ${s.t2d[i]?'checked':''}><div class="t">${f}</div></label>`).join('')}</div>
+    </div>
+    <div class="card">
+      <h3><span class="stepno">2</span>Red-flag features for another diabetes type?</h3>
+      <div class="opt-list">${CLASS_OTHER_FLAGS.map(f=>`
+        <label class="opt ${s.flags[f.key]?'sel':''}"><input type="checkbox" data-flag="${f.key}" ${s.flags[f.key]?'checked':''}><div class="t">${f.label}</div></label>`).join('')}</div>
+    </div>
+    <div id="classResult"></div>
+  `;
+  root.querySelectorAll('[data-t2d]').forEach(inp=>inp.addEventListener('change',e=>{s.t2d[+e.target.dataset.t2d]=e.target.checked;saveState();computeClassification()}));
+  root.querySelectorAll('[data-flag]').forEach(inp=>inp.addEventListener('change',e=>{s.flags[e.target.dataset.flag]=e.target.checked;saveState();computeClassification()}));
+  computeClassification();
+}
+function computeClassification(){
+  const s=state.classify;const fc=Object.values(s.flags).filter(Boolean).length;const tc=s.t2d.filter(Boolean).length;
+  const div=document.getElementById('classResult');if(!div)return;
+  if(fc===0){s.result="Confirmed T2D phenotype";div.innerHTML=`<div class="result"><h4>Result: Confirmed T2D</h4><p>${tc}/5 features, no red flags. Proceed to Pathway.</p></div>`}
+  else{
+    const t1d=s.flags.dka||s.flags.autoimm||s.flags.leanIR||s.flags.famT1D||s.flags.checkpoint;
+    const other=s.flags.endocrinopathy||s.flags.pancreatic||s.flags.monogenic||s.flags.medication||s.flags.other;
+    let L=[];
+    if(t1d)L.push("Features suggest <b>T1D/LADA</b> — check T1D antibodies + C-peptide.");
+    if(s.flags.endocrinopathy)L.push("Consider <b>endocrinopathy</b> — refer to endocrinology.");
+    if(s.flags.pancreatic)L.push("Consider <b>anatomic pancreatic disease</b>.");
+    if(s.flags.monogenic)L.push("Consider <b>monogenic diabetes</b> — genetic testing.");
+    if(s.flags.medication)L.push("Consider <b>medication-induced</b> diabetes.");
+    if(s.flags.other)L.push("Consider <b>mitochondrial/lipodystrophy</b>.");
+    s.result="Atypical features suspected";div.innerHTML=`<div class="result warn"><h4>Atypical features — consider referral</h4><ul>${L.map(l=>'<li>'+l+'</li>').join('')}</ul></div>`;
+  }
+  saveState();
+}
+
+// ===================== 2. PATHWAY =====================
+function renderPathway(root){
+  root.innerHTML=`<div class="subtabs">
+    <button data-fw="comorbidity" class="${state.pathway.framework==='comorbidity'?'active':''}">Comorbidity-centric</button>
+    <button data-fw="glucose" class="${state.pathway.framework==='glucose'?'active':''}">Glucose-centric</button></div><div id="pathwayBody"></div>`;
+  root.querySelectorAll('[data-fw]').forEach(b=>b.addEventListener('click',()=>{state.pathway.framework=b.dataset.fw;saveState();renderPathway(root)}));
+  const body=document.getElementById('pathwayBody');
+  if(state.pathway.framework==='comorbidity')renderComPathway(body);else renderGlucosePathway(body);
+}
+function renderComPathway(root){
+  const s=state.pathway.com;
+  root.innerHTML=`<div class="card"><h3><span class="stepno">1</span>Comorbidities</h3>
+    <p class="muted small">Select all that apply.</p>
+    <div class="chips">${COM_OPTIONS.map(k=>`<button class="chip multi ${s.selected.includes(k)?'sel':''}" data-com="${k}">${PATHWAY_INFO[k].label}</button>`).join('')}</div>
+    ${s.selected.filter(x=>x!=='none').length>1?`<div class="divider"></div><p class="muted small"><b>Multiple comorbidities</b> — select priority:</p><div class="chips">${s.selected.filter(x=>x!=='none').map(k=>`<button class="chip ${s.priority===k?'sel':''}" data-prio="${k}">${PATHWAY_INFO[k].label}</button>`).join('')}</div>`:''}</div>
+    <div id="comExtra"></div><div id="comResult"></div>`;
+  root.querySelectorAll('[data-com]').forEach(b=>b.addEventListener('click',()=>{const k=b.dataset.com;if(k==='none'){s.selected=s.selected.includes('none')?[]:['none']}else{s.selected=s.selected.filter(x=>x!=='none');if(s.selected.includes(k))s.selected=s.selected.filter(x=>x!==k);else s.selected.push(k)}if(s.selected.filter(x=>x!=='none').length<=1)s.priority=s.selected.find(x=>x!=='none')||"";saveState();renderComPathway(root)}));
+  root.querySelectorAll('[data-prio]').forEach(b=>b.addEventListener('click',()=>{s.priority=b.dataset.prio;saveState();renderComPathway(root)}));
+  renderComExtra(s);
+}
+function renderComExtra(s){
+  const div=document.getElementById('comExtra');const active=s.priority||s.selected[0]||"";
+  let html="";
+  if(active==='ckd')html=`<div class="card"><h3><span class="stepno">2</span>eGFR band</h3><div class="chips">${[["gt30","eGFR >30"],["20to30","eGFR 20-30"],["lt20","eGFR <20"]].map(([k,l])=>`<button class="chip ${s.ckdEgfr===k?'sel':''}" data-egfr="${k}">${l}</button>`).join('')}</div></div>`;
+  if(active==='frailty')html=`<div class="card"><h3><span class="stepno">2</span>Frailty risk</h3><div class="chips">
+    <button class="chip ${s.frailtyRisk==='safe'?'sel':''}" data-frail="safe">Not at risk</button>
+    <button class="chip ${s.frailtyRisk==='atrisk'?'sel':''}" data-frail="atrisk">At risk of adverse events</button></div></div>`;
+  div.innerHTML=html;
+  div.querySelectorAll('[data-egfr]').forEach(b=>b.addEventListener('click',()=>{s.ckdEgfr=b.dataset.egfr;saveState();renderComPathway(document.getElementById('pathwayBody'))}));
+  div.querySelectorAll('[data-frail]').forEach(b=>b.addEventListener('click',()=>{s.frailtyRisk=b.dataset.frail;saveState();renderComPathway(document.getElementById('pathwayBody'))}));
+  buildComResult(s);
+}
+function buildComResult(s){
+  const div=document.getElementById('comResult');if(!div)return;
+  const active=s.priority||s.selected[0]||"";if(!active){div.innerHTML='';return}
+  let ini=[],esc=[],further=[],notes=[];
+  if(active==='ckd'){if(s.ckdEgfr==='gt30')ini.push("Metformin (MR) + SGLT2i.");else if(s.ckdEgfr==='20to30')ini.push("Dapagliflozin or empagliflozin + DPP-4i.");else if(s.ckdEgfr==='lt20')ini.push("DPP-4i. If not suitable: pioglitazone or insulin.");else ini.push("Select eGFR band above.")}
+  else if(active==='earlyonset')ini.push("Triple therapy: Metformin (MR) + SGLT2i + GLP-1 RA or tirzepatide.");
+  else if(active==='ascvd')ini.push("Triple therapy: Metformin (MR) + SGLT2i + semaglutide SC.");
+  else if(active==='frailty'){ini.push("Metformin (MR).");if(s.frailtyRisk==='safe')ini.push("Add SGLT2i.");else if(s.frailtyRisk==='atrisk')ini.push("Offer DPP-4i instead.");else ini.push("Select frailty risk above.")}
+  else{ini.push("Metformin (MR) + SGLT2i.");if(active==='hf')notes.push("Prioritise SGLT2i. Avoid TZD if NYHA III/IV.")}
+  esc.push("Add DPP-4i if further treatment needed. Do not combine with GLP-1 RA.");
+  esc.push("If DPP-4i not suitable: SU (eGFR >30), pioglitazone (unless HF), or insulin.");
+  if(s.selected.includes('obesity'))esc.push("<b>Obesity:</b> consider GLP-1 RA or tirzepatide.");
+  further.push("Add SU, pioglitazone, or insulin if DPP-4i insufficient.");
+  notes.push("Symptoms of hyperglycaemia: consider insulin or SU.");
+  div.innerHTML=`<div class="result"><h4>Initial</h4><ul>${ini.map(x=>'<li>'+x+'</li>').join('')}</ul></div>
+    <div class="result warn"><h4>Escalation</h4><ul>${esc.map(x=>'<li>'+x+'</li>').join('')}</ul></div>
+    <div class="result danger"><h4>Further</h4><ul>${further.map(x=>'<li>'+x+'</li>').join('')}</ul></div>
+    <div class="card"><h3>Notes</h3><ul class="small">${notes.map(x=>'<li>'+x+'</li>').join('')}</ul></div>`;
+}
+function renderGlucosePathway(root){
+  const s=state.pathway.gl;
+  root.innerHTML=`<div class="card"><h3><span class="stepno">1</span>Current A1C</h3>
+    <label class="field"><span class="lbl">A1C (%)</span><input type="number" step="0.1" id="glA1c" min="3" max="20" value="${s.a1c}" placeholder="e.g. 8.2"></label><div id="glA1cResult"></div></div>
+    <div class="card"><h3><span class="stepno">2</span>Clinical scenario</h3><div class="chips">${GL_SCENARIOS.map(sc=>`<button class="chip multi ${s.scenarios.includes(sc.key)?'sel':''}" data-sc="${sc.key}">${sc.label}</button>`).join('')}</div></div>
+    <div id="glResult"></div>
+    <div class="card"><h3><span class="stepno">3</span>Glycaemic target</h3>
+      <label class="opt ${s.hypoRiskTarget?'sel':''}"><input type="checkbox" id="glHypoTarget" ${s.hypoRiskTarget?'checked':''}><div><div class="t">High hypo risk / limited life expectancy</div></div></label>
+      <div id="glTarget"></div></div>`;
+  document.getElementById('glA1c').addEventListener('input',e=>{s.a1c=e.target.value;saveState();renderGlA1c()});
+  root.querySelectorAll('[data-sc]').forEach(b=>b.addEventListener('click',()=>{const k=b.dataset.sc;s.scenarios=s.scenarios.includes(k)?s.scenarios.filter(x=>x!==k):[...s.scenarios,k];saveState();renderGlucosePathway(root)}));
+  document.getElementById('glHypoTarget').addEventListener('change',e=>{s.hypoRiskTarget=e.target.checked;saveState();renderGlTarget()});
+  renderGlA1c();renderGlScenarioResult();renderGlTarget();
+}
+function renderGlA1c(){const s=state.pathway.gl;const div=document.getElementById('glA1cResult');if(!div)return;const a=parseFloat(s.a1c);if(isNaN(a)){div.innerHTML='';return}div.innerHTML=a>9?`<div class="result warn"><h4>A1C &gt;9%</h4><p>Start ≥2 agents.</p></div>`:a>7.5?`<div class="result"><h4>A1C &gt;7.5%</h4><p>Start 2 agents.</p></div>`:`<div class="result"><h4>A1C ≤7.5%</h4><p>Single-agent reasonable.</p></div>`}
+function renderGlScenarioResult(){const s=state.pathway.gl;const div=document.getElementById('glResult');if(!div)return;if(!s.scenarios.length){div.innerHTML='';return}div.innerHTML=s.scenarios.map(k=>{const sc=GL_SCENARIOS.find(x=>x.key===k),p=GL_PREFERRED[k];return`<div class="card"><h3>${sc.label}${sc.d?` <span class="tag navy">${sc.d}</span>`:''}</h3><div class="result"><h4>Preferred</h4><p>${p.pref}</p></div><div class="result warn"><h4>Less preferred</h4><p>${p.avoid}</p></div></div>`}).join('')}
+function renderGlTarget(){const s=state.pathway.gl;const div=document.getElementById('glTarget');if(!div)return;div.innerHTML=s.hypoRiskTarget?`<div class="result warn"><p><b>Target A1C 7-8%</b></p></div>`:`<div class="result"><p><b>Target A1C &lt;6.5%</b></p></div>`}
+
+// ===================== 3. DRUGS =====================
+const DRUG_ORDER=["metformin","glp1","giptirz","sglt2i","tzd","dpp4i","su","gln","agi","insulin"];
+function renderDrugs(root){
+  const egfrLine = state.egfr
+    ? `<div class="card no-print" style="padding:10px 14px;"><span class="muted small">Patient's current eGFR: <b>${esc(String(state.egfr))} mL/min/1.73m\u00b2</b> — compare against the Renal row below for each drug.</span></div>`
+    : `<div class="card no-print" style="padding:10px 14px;"><span class="muted small">No eGFR on file — set it on the Patient tab to compare against the Renal thresholds below.</span></div>`;
+  root.innerHTML=`${egfrLine}<div class="card"><h3>Pharmacotherapy Profiles</h3>
+    <p class="muted small">Tap a class for detail. Adapted from guideline algorithms.</p>
+    <div class="chips">${['all',...DRUG_ORDER].map(k=>`<button class="chip ${state.drugsFilter===k?'sel':''}" data-df="${k}">${k==='all'?'All':DRUGS[k].name}</button>`).join('')}</div></div><div id="drugList"></div>`;
+  root.querySelectorAll('[data-df]').forEach(b=>b.addEventListener('click',()=>{state.drugsFilter=b.dataset.df;saveState();renderDrugs(root)}));
+  const show=state.drugsFilter==='all'?DRUG_ORDER:[state.drugsFilter];
+  document.getElementById('drugList').innerHTML=show.map(k=>{const d=DRUGS[k];const rows=[["Efficacy",d.efficacy],["ASCVD - MACE",d.ascvd_mace],["ASCVD - Stroke",d.ascvd_stroke],["CHF",d.chf],["CKD",d.ckd],["Renal",d.renal],["Renal",d.renal2],["Hypoglycaemia",d.hypo],["Weight",d.weight],["MASLD",d.masld],["GI effects",d.gi],["Other",d.other],["Cost",d.cost]].filter(r=>r[1]);return`<div class="card"><h3>${d.name} <span class="muted small">— ${d.cls||''}</span></h3><div class="scrollx"><table class="ref">${rows.map(r=>`<tr><th>${r[0]}</th>${cell(r[1])}</tr>`).join('')}</table></div><div class="divider"></div><div class="small"><b>Dosing:</b><br>${(d.dosing||'').replace(/\n/g,'<br>')}</div></div>`}).join('');
+}
+
+// ===================== 4. REGIMEN =====================
+function renderRegimen(root){
+  const egfrWarnings=getEgfrWarnings();
+  const egfrBanner = state.egfr
+    ? `<div class="card no-print" style="padding:10px 14px;"><span class="muted small">Current eGFR: <b>${esc(String(state.egfr))} mL/min/1.73m\u00b2</b></span>${egfrWarnings.map(w=>`<div class="result ${w.level==='red'?'danger':'warn'}" style="margin-top:8px"><h4>⚠️ ${esc(w.text)}</h4></div>`).join('')}</div>`
+    : `<div class="card no-print" style="padding:10px 14px;"><span class="muted small">No eGFR on file — set it on the Patient tab to see renal-dose warnings for metformin, SGLT2i etc. here.</span></div>`;
+  let regHTML='';
+  if(state.regimen.length){
+    regHTML=`<div class="regimen-list">${state.regimen.map((r,i)=>`
+      <div class="regimen-item ${r.isCustom?'custom':''}">
+        <div class="drug-info"><div class="drug-name">${esc(r.drug)}${r.isCustom?` <span class="tag amber">${esc(r.category||'Custom')}</span>`:''}</div>
+          <div class="drug-detail">${esc(r.brand)} · ${esc(r.strength)} · ${esc(r.dosage)}</div></div>
+        <button class="remove-btn" data-rm="${i}" aria-label="Remove ${esc(r.drug)} from regimen">✕</button></div>`).join('')}</div>
+      <div class="btn-row" style="margin-top:8px"><button class="btn red sm" id="clearAllDrugs">🗑️ Clear All</button></div>`;
+  }else regHTML=`<div style="text-align:center;padding:16px;color:var(--muted);font-size:13px"><div style="font-size:28px;margin-bottom:6px">📋</div>No drugs added yet.</div>`;
+
+  // Template bar
+  let tplBar=`<div class="template-bar">
+    <select id="tplSelect"><option value="">— Load Template —</option>${state.templates.map((t,i)=>`<option value="${i}">${esc(t.name)}</option>`).join('')}</select>
+    <button class="btn sm" id="loadTplBtn">Load</button>
+    <button class="btn sm amber" id="saveTplBtn">💾 Save</button>
+    ${state.templates.length?'<button class="btn sm red" id="delTplBtn">🗑️</button>':''}</div>`;
+
+  root.innerHTML=`
+    ${egfrBanner}
+    <div class="card">
+      <h3>Drug Regimen Builder</h3>
+      ${tplBar}
+      <div class="divider"></div>
+      <p class="muted small">Select from list or add a custom drug (antihypertensives, statins, etc.)</p>
+      <div class="row">
+        <label class="field"><span class="lbl">Select Drug</span>
+          <select id="regDrugSelect"><option value="">— Choose —</option>${REGIMEN_DRUGS.map(d=>`<option value="${escAttr(d)}">${esc(d)}</option>`).join('')}</select></label>
+        <div style="display:flex;align-items:flex-end"><button class="btn sm amber" id="customDrugBtn" style="margin-bottom:10px">+ Custom Drug</button></div>
+      </div>
+      <div class="drug-panel" id="drugPanel">
+        <label class="field"><span class="lbl">Brand Name</span><input type="text" id="regBrand" placeholder="e.g. Glucophage"></label>
+        <div class="row">
+          <label class="field"><span class="lbl">Tablet Strength</span><input type="text" id="regStrength" placeholder="e.g. 500 mg, 30 mg"></label>
+          <label class="field"><span class="lbl">Dosage Instructions</span><input type="text" id="regDosage" placeholder="e.g. 1 tab BD"></label>
+        </div>
+        <div class="btn-row"><button class="btn sm" id="addDrugBtn">➕ Add</button><button class="btn ghost sm" id="clearPanelBtn">Clear</button></div>
+      </div>
+      <div class="drug-panel custom-panel" id="customPanel">
+        <label class="field"><span class="lbl">Drug Name</span><input type="text" id="customName" placeholder="e.g. Amlodipine, Atorvastatin"></label>
+        <label class="field"><span class="lbl">Category</span>
+          <select id="customCategory"><option value="">— Select category —</option>${CUSTOM_DRUG_CATEGORIES.map(c=>`<option value="${escAttr(c)}">${esc(c)}</option>`).join('')}</select></label>
+        <div class="row">
+          <label class="field"><span class="lbl">Strength</span><input type="text" id="customStrength" placeholder="e.g. 5 mg, 10 mg"></label>
+          <label class="field"><span class="lbl">Dosage</span><input type="text" id="customDosage" placeholder="e.g. 1 tab OD"></label>
+        </div>
+        <div class="btn-row"><button class="btn sm amber" id="addCustomBtn">➕ Add Custom</button><button class="btn ghost sm" id="clearCustomBtn">Clear</button></div>
+      </div>
+    </div>
+    <div class="card"><h3>Current Regimen</h3>${regHTML}</div>`;
+
+  // Events — standard drug
+  document.getElementById('regDrugSelect').addEventListener('change',e=>{const v=e.target.value;document.getElementById('drugPanel').classList.toggle('show',!!v);document.getElementById('customPanel').classList.remove('show');document.getElementById('regBrand').value=BRAND_MAP[v]||''});
+  document.getElementById('addDrugBtn').addEventListener('click',()=>{
+    const drug=document.getElementById('regDrugSelect').value,brand=document.getElementById('regBrand').value.trim(),strength=document.getElementById('regStrength').value.trim(),dosage=document.getElementById('regDosage').value.trim();
+    if(!drug){toast('Select a drug.');return}if(!dosage){toast('Enter dosage.');return}
+    state.regimen.push({drug,brand:brand||'—',strength:strength||'—',dosage,isCustom:false});saveState();renderRegimen(root);toast('Drug added.');
+  });
+  document.getElementById('clearPanelBtn').addEventListener('click',()=>{document.getElementById('regDrugSelect').value='';document.getElementById('regBrand').value='';document.getElementById('regStrength').value='';document.getElementById('regDosage').value='';document.getElementById('drugPanel').classList.remove('show')});
+
+  // Events — custom drug
+  document.getElementById('customDrugBtn').addEventListener('click',()=>{document.getElementById('customPanel').classList.toggle('show');document.getElementById('drugPanel').classList.remove('show');document.getElementById('regDrugSelect').value=''});
+  document.getElementById('addCustomBtn').addEventListener('click',()=>{
+    const name=document.getElementById('customName').value.trim(),cat=document.getElementById('customCategory').value,str=document.getElementById('customStrength').value.trim(),dos=document.getElementById('customDosage').value.trim();
+    if(!name){toast('Enter drug name.');return}if(!dos){toast('Enter dosage.');return}
+    state.regimen.push({drug:name,brand:cat||'Custom',strength:str||'—',dosage:dos,isCustom:true,category:cat});saveState();renderRegimen(root);toast('Custom drug added.');
+  });
+  document.getElementById('clearCustomBtn').addEventListener('click',()=>{['customName','customCategory','customStrength','customDosage'].forEach(id=>document.getElementById(id).value='');document.getElementById('customPanel').classList.remove('show')});
+
+  // Events — regimen list
+  root.querySelectorAll('[data-rm]').forEach(b=>b.addEventListener('click',()=>{state.regimen.splice(+b.dataset.rm,1);saveState();renderRegimen(root)}));
+  const clearBtn=document.getElementById('clearAllDrugs');if(clearBtn)clearBtn.addEventListener('click',()=>{if(confirm('Remove all drugs?')){state.regimen=[];saveState();renderRegimen(root)}});
+
+  // Events — templates
+  document.getElementById('saveTplBtn').addEventListener('click',()=>{
+    if(!state.regimen.length){toast('Add drugs first.');return}
+    const name=prompt('Template name:','Template '+(state.templates.length+1));
+    if(!name)return;
+    state.templates.push({name,regimen:JSON.parse(JSON.stringify(state.regimen))});saveState();renderRegimen(root);toast('Template saved: '+name);
+  });
+  document.getElementById('loadTplBtn').addEventListener('click',()=>{
+    const idx=document.getElementById('tplSelect').value;if(idx===""){toast('Select a template.');return}
+    const tpl=state.templates[+idx];
+    if(state.regimen.length&&!confirm('Replace current regimen with "'+tpl.name+'"?'))return;
+    state.regimen=JSON.parse(JSON.stringify(tpl.regimen));saveState();renderRegimen(root);toast('Loaded: '+tpl.name);
+  });
+  const delBtn=document.getElementById('delTplBtn');if(delBtn)delBtn.addEventListener('click',()=>{
+    const idx=document.getElementById('tplSelect').value;if(idx===""){toast('Select a template.');return}
+    if(confirm('Delete "'+state.templates[+idx].name+'"?')){state.templates.splice(+idx,1);saveState();renderRegimen(root);toast('Template deleted.')}
+  });
+}
+
+// ===================== 5. INSULIN =====================
+function renderInsulin(root){
+  const s=state.insulin;
+  root.innerHTML=`
+    <div class="card"><h3><span class="stepno">A</span>Starting Basal Insulin</h3>
+      <p class="muted small">Basal analogues preferred. Discontinue SU when starting basal insulin.</p>
+      <div class="row"><label class="field"><span class="lbl">Weight (kg)</span><input type="number" id="insWeight" min="0" max="400" value="${s.weight}"></label>
+        <label class="field"><span class="lbl">Current A1C (%)</span><input type="number" step="0.1" id="insA1c" min="3" max="20" value="${s.a1c}"></label></div>
+      <div id="basalOut"></div></div>
+    <div class="card"><h3><span class="stepno">B</span>Basal Titration</h3>
+      <div class="row"><label class="field"><span class="lbl">Current basal (U/day)</span><input type="number" id="curBasal" min="0" max="500" value="${s.currentBasal}"></label>
+        <label class="field"><span class="lbl">Fasting glucose (mg/dL)</span><input type="number" id="fbgIn" min="0" max="1000" value="${s.fbg}"></label></div>
+      <div id="titrateOut"></div><div class="divider"></div>
+      <p class="small"><b>Hypo:</b> BG &lt;70 → ↓ basal 10-20%. BG &lt;40 → ↓ 20-40%.</p></div>
+    <div class="card"><h3><span class="stepno">C</span>BeAM Score</h3>
+      <div class="row"><label class="field"><span class="lbl">Bedtime glucose (mg/dL)</span><input type="number" id="beamBed" min="0" max="1000" value="${s.beamBedtime}"></label>
+        <label class="field"><span class="lbl">Fasting glucose (mg/dL)</span><input type="number" id="beamFast" min="0" max="1000" value="${s.beamFasting}"></label></div>
+      <div id="beamOut"></div><p class="small muted">Consider prandial if basal &gt;0.5 U/kg or BeAM &gt;50.</p></div>
+    <div class="card"><h3><span class="stepno">D</span>Prandial Insulin</h3>
+      <div class="opt-list">
+        <label class="opt ${s.prandialMethod==='stepwise'?'sel':''}"><input type="radio" name="pm" value="stepwise" ${s.prandialMethod==='stepwise'?'checked':''}><div><div class="t">Stepwise</div><div class="d">Largest meal: 10% of basal or 4-5 U.</div></div></label>
+        <label class="opt ${s.prandialMethod==='simultaneous'?'sel':''}"><input type="radio" name="pm" value="simultaneous" ${s.prandialMethod==='simultaneous'?'checked':''}><div><div class="t">Simultaneous</div><div class="d">50% basal / 50% prandial ÷ 3.</div></div></label>
+        <label class="opt ${s.prandialMethod==='premixed'?'sel':''}"><input type="radio" name="pm" value="premixed" ${s.prandialMethod==='premixed'?'checked':''}><div><div class="t">Premixed</div><div class="d">0.2-0.3 U/kg; 2/3 breakfast, 1/3 supper.</div></div></label></div>
+      <label class="field" style="margin-top:8px"><span class="lbl">TDD (U)</span><input type="number" id="tddIn" min="0" max="500" value="${s.tdd}"></label>
+      <div id="prandialOut"></div></div>
+    <div class="card"><h3><span class="stepno">E</span>Manual Entry</h3>
+      <div class="row"><label class="field"><span class="lbl">Basal (U/day)</span><input type="number" step="0.5" id="manualBasal" min="0" max="500" value="${s.bolus?'':s.basalLow||''}"></label>
+        <label class="field"><span class="lbl">Bolus (U/meal)</span><input type="number" step="0.5" id="manualBolus" min="0" max="200" value="${s.bolus||''}"></label></div>
+      <label class="field"><span class="lbl">Adjustment Notes</span><textarea id="adjNotes">${esc(s.adjNotes||'')}</textarea></label></div>`;
+  ['insWeight','insA1c'].forEach(id=>document.getElementById(id).addEventListener('input',e=>{s[id==='insWeight'?'weight':'a1c']=e.target.value;saveState();calcBasal()}));
+  document.getElementById('curBasal').addEventListener('input',e=>{s.currentBasal=e.target.value;saveState();calcTitrate()});
+  document.getElementById('fbgIn').addEventListener('input',e=>{s.fbg=e.target.value;saveState();calcTitrate()});
+  document.getElementById('beamBed').addEventListener('input',e=>{s.beamBedtime=e.target.value;saveState();calcBeam()});
+  document.getElementById('beamFast').addEventListener('input',e=>{s.beamFasting=e.target.value;saveState();calcBeam()});
+  root.querySelectorAll('input[name=pm]').forEach(r=>r.addEventListener('change',e=>{s.prandialMethod=e.target.value;saveState();calcPrandial()}));
+  document.getElementById('tddIn').addEventListener('input',e=>{s.tdd=e.target.value;saveState();calcPrandial()});
+  document.getElementById('manualBasal').addEventListener('input',e=>{s.basalLow=e.target.value;saveState()});
+  document.getElementById('manualBolus').addEventListener('input',e=>{s.bolus=e.target.value;saveState()});
+  document.getElementById('adjNotes').addEventListener('input',e=>{s.adjNotes=e.target.value;saveState()});
+  calcBasal();calcTitrate();calcBeam();calcPrandial();
+}
+function calcBasal(){const s=state.insulin;const div=document.getElementById('basalOut');if(!div)return;const w=parseFloat(s.weight),a1c=parseFloat(s.a1c);if(!w||isNaN(a1c)){div.innerHTML='';return}const lo=a1c<8?w*0.1:w*0.2,hi=a1c<8?w*0.2:w*0.3;s.basalLow=lo.toFixed(1);s.basalHigh=hi.toFixed(1);saveState();div.innerHTML=`<div class="calc-out"><div class="lbl">Starting basal (${a1c<8?'A1C <8%':'A1C ≥8%'})</div><div class="big">${lo.toFixed(0)}-${hi.toFixed(0)} U/day</div><div class="small" style="color:#B9CBD8;margin-top:4px">${a1c<8?'0.1-0.2':'0.2-0.3'} U/kg × ${w} kg</div></div>`}
+function calcTitrate(){const s=state.insulin;const div=document.getElementById('titrateOut');if(!div)return;const cur=parseFloat(s.currentBasal),fbg=parseFloat(s.fbg);if(!cur||isNaN(fbg)){div.innerHTML='<p class="small muted">Enter dose and glucose.</p>';return}let a,n;if(fbg>180){a="FBG >180: +20% basal.";n=cur*1.2}else if(fbg>=140){a="FBG 140-180: +10%.";n=cur*1.1}else if(fbg>=110){a="FBG 110-139: +1 U.";n=cur+1}else if(fbg<70){a="FBG <70: ↓ 10-20%.";n=cur*0.85}else{a="At target (70-109): maintain.";n=cur}div.innerHTML=`<div class="result"><h4>${a}</h4><p>Alt: adjust by 2 U every 2-5 days.</p></div><div class="calc-out"><div class="lbl">Next dose</div><div class="big">${n.toFixed(0)} U/day</div></div>`}
+function calcBeam(){const s=state.insulin;const div=document.getElementById('beamOut');if(!div)return;const bed=parseFloat(s.beamBedtime),fast=parseFloat(s.beamFasting);if(isNaN(bed)||isNaN(fast)){div.innerHTML='';return}const sc=bed-fast;div.innerHTML=`<div class="calc-out"><div class="lbl">BeAM (bedtime − fasting)</div><div class="big">${sc.toFixed(0)}</div></div>${sc>50?`<div class="result warn"><p><b>BeAM &gt;50</b> — consider prandial insulin.</p></div>`:''}`}
+function calcPrandial(){const s=state.insulin;const div=document.getElementById('prandialOut');if(!div)return;const tdd=parseFloat(s.tdd);if(!s.prandialMethod){div.innerHTML='';return}let h='';if(s.prandialMethod==='stepwise'){const br=parseFloat(s.currentBasal)||0;const d=br?Math.max(4,br*0.1):null;h=`<div class="calc-out"><div class="lbl">Dose at largest meal</div><div class="big">${d?d.toFixed(0)+' U':'4-5 U'}</div></div>`}else if(s.prandialMethod==='simultaneous'){if(tdd){const b=tdd*0.5,p=tdd*0.5,m=p/3;h=`<div class="calc-out"><div class="lbl">Split (TDD ${tdd} U)</div><div class="big">${b.toFixed(0)} U basal</div><div class="small" style="color:#B9CBD8">+ ${p.toFixed(0)} U prandial ÷ 3 ≈ ${m.toFixed(0)} U/meal</div></div>`}else h='<p class="small muted">Enter TDD.</p>'}else if(s.prandialMethod==='premixed'){const w=parseFloat(state.insulin.weight);if(w){h=`<div class="calc-out"><div class="lbl">Premixed (0.2-0.3 U/kg)</div><div class="big">${(w*0.2).toFixed(0)}-${(w*0.3).toFixed(0)} U/day</div><div class="small" style="color:#B9CBD8">Breakfast: ${(w*0.2*2/3).toFixed(0)}-${(w*0.3*2/3).toFixed(0)} · Supper: ${(w*0.2/3).toFixed(0)}-${(w*0.3/3).toFixed(0)}</div></div>`}else h='<p class="small muted">Enter weight in step A.</p>'}div.innerHTML=h}
+
+// ===================== 6. LABS =====================
+function renderLabs(root){
+  const s=state.labs;
+  const selected=new Set(s.selected);
+  const labGrid=DEFAULT_LABS.map(l=>`
+    <label class="lab-item ${selected.has(l.key)?'sel':''}">
+      <input type="checkbox" data-lab="${l.key}" ${selected.has(l.key)?'checked':''}>
+      <span>${l.label}</span></label>`).join('');
+
+  let customHtml='';
+  if(s.customLabs.length){
+    customHtml=`<div class="divider"></div><p class="muted small"><b>Custom investigations:</b></p>
+      <div class="regimen-list">${s.customLabs.map((l,i)=>`
+        <div class="regimen-item custom"><div class="drug-info"><div class="drug-name">${esc(l)}</div></div>
+          <button class="remove-btn" data-rmLab="${i}" aria-label="Remove ${esc(l)} from investigations">✕</button></div>`).join('')}</div>`;
+  }
+
+  root.innerHTML=`
+    <div class="card">
+      <h3>🔬 Laboratory & Clinical Investigations</h3>
+      <p class="muted small">Select relevant investigations. Add custom tests below.</p>
+      <div class="btn-row no-print" style="margin-bottom:8px">
+        <button class="btn ghost sm" id="labsSelectAll">Select all</button>
+        <button class="btn ghost sm" id="labsClearAll">Clear all</button>
+      </div>
+      <div class="lab-grid">${labGrid}</div>
+      ${customHtml}
+      <div class="divider"></div>
+      <p class="muted small"><b>Add custom investigation:</b></p>
+      <div class="custom-lab-row">
+        <input type="text" id="customLabIn" placeholder="e.g. CT Abdomen, PSA, CRP...">
+        <button class="btn sm" id="addLabBtn">Add</button>
+      </div>
+    </div>`;
+
+  document.getElementById('labsSelectAll').addEventListener('click',()=>{s.selected=DEFAULT_LABS.map(l=>l.key);saveState();renderLabs(root)});
+  document.getElementById('labsClearAll').addEventListener('click',()=>{s.selected=[];saveState();renderLabs(root)});
+
+  root.querySelectorAll('[data-lab]').forEach(inp=>inp.addEventListener('change',e=>{
+    const k=e.target.dataset.lab;
+    if(e.target.checked)s.selected.push(k);else s.selected=s.selected.filter(x=>x!==k);
+    saveState();renderLabs(root);
+  }));
+  root.querySelectorAll('[data-rmLab]').forEach(b=>b.addEventListener('click',()=>{s.customLabs.splice(+b.dataset.rmLab,1);saveState();renderLabs(root)}));
+  document.getElementById('addLabBtn').addEventListener('click',()=>{
+    const v=document.getElementById('customLabIn').value.trim();if(!v){toast('Enter a test name.');return}
+    s.customLabs.push(v);saveState();renderLabs(root);toast('Added: '+v);
+  });
+}
+
+// ===================== 7. NOTE =====================
+// Plan & Instructions — computed candidate list (stable keys so selections persist across regimen changes)
+function buildPlanItems(){
+  const egfrNum=parseFloat(state.egfr);
+  let egfrNote='';
+  if(!isNaN(egfrNum)){if(egfrNum<30)egfrNote='eGFR <30: Metformin contraindicated. Review all renally-cleared drugs.';else if(egfrNum<45)egfrNote='eGFR 30-45: Reduce metformin. Consider linagliptin (no renal adjustment).';else if(egfrNum<60)egfrNote='eGFR <60: Monitor renal function. Dose-adjust per SmPC.'}
+  const ins=state.insulin;
+  const insProvided=(ins.basalLow||ins.bolus)?true:!!ins.bolus;
+  const hasSGLT2=state.regimen.some(r=>/sglt2|empagliflozin|dapagliflozin|canagliflozin|jardiance|forxiga|synjardy/i.test(r.drug+' '+r.brand));
+  const hasMet=state.regimen.some(r=>/metformin/i.test(r.drug));
+  const hasSU=state.regimen.some(r=>/sulfonylurea|gliclazide|glimepiride|diamicron|amaryl|getryl/i.test(r.drug+' '+r.brand));
+  const hasDPP4=state.regimen.some(r=>/dpp|sitagliptin|vildagliptin|linagliptin|januvia|galvus|trajenta/i.test(r.drug+' '+r.brand));
+  const hasGLP1=state.regimen.some(r=>/glp|semaglutide|liraglutide|dulaglutide|ozempic|trulicity|rybelsus/i.test(r.drug+' '+r.brand));
+  const items=[];
+  items.push({key:'oral',text:'Continue current oral regimen as prescribed. Monitor for side effects.'});
+  if(hasMet)items.push({key:'met',text:'Metformin: ensure eGFR ≥30. Monitor GI tolerance.'});
+  if(hasSGLT2)items.push({key:'sglt2',text:'SGLT2i: counsel on genital hygiene, hydration, sick-day rules.'});
+  if(hasDPP4)items.push({key:'dpp4',text:'DPP-4i: well-tolerated, weight-neutral.'});
+  if(hasSU)items.push({key:'su',text:'SU: counsel on hypo risk. Regular meal timing.'});
+  if(hasGLP1)items.push({key:'glp1',text:'GLP-1 RA: titrate slowly. Weight loss + CV protection expected.'});
+  if(egfrNote)items.push({key:'egfr',text:egfrNote});
+  items.push({key:'ins',text:insProvided?'Insulin: titrate basal to FBG 4.0–7.0 mmol/L. Adjust by 2 U every 3–4 days.':'Insulin: not indicated. Consider if HbA1c above target despite oral therapy.'});
+  items.push({key:'monitor',text:'Monitoring: HbA1c every 3 months. Annual lipids, eGFR, uACR, eye exam.'});
+  items.push({key:'lifestyle',text:'Lifestyle: MNT, ≥150 min/wk activity, weight management.'});
+  items.push({key:'followup',text:'Follow-up: 4–12 weeks. Adjust per current clinical guidelines.'});
+  return items;
+}
+function renderPlanChecklist(root){
+  const box=document.getElementById('planChecklist');if(!box)return;
+  const items=buildPlanItems();
+  box.innerHTML=`<div class="btn-row no-print" style="margin-bottom:6px">
+      <button class="btn ghost sm" id="planSelectAll">Select all</button>
+      <button class="btn ghost sm" id="planClearAll">Clear all</button>
+    </div>
+    <div class="lab-grid">${items.map(it=>{
+      const on=state.planSelected[it.key]!==false;
+      return `<label class="lab-item ${on?'sel':''}"><input type="checkbox" data-plan="${it.key}" ${on?'checked':''}><span>${esc(it.text)}</span></label>`;
+    }).join('')}</div>`;
+  box.querySelectorAll('[data-plan]').forEach(inp=>inp.addEventListener('change',e=>{
+    state.planSelected[e.target.dataset.plan]=e.target.checked;
+    saveState();renderPlanChecklist(root);
+    if(state.noteGenerated)generateNotes(true);
+  }));
+  document.getElementById('planSelectAll').addEventListener('click',()=>{items.forEach(it=>state.planSelected[it.key]=true);saveState();renderPlanChecklist(root);if(state.noteGenerated)generateNotes(true)});
+  document.getElementById('planClearAll').addEventListener('click',()=>{items.forEach(it=>state.planSelected[it.key]=false);saveState();renderPlanChecklist(root);if(state.noteGenerated)generateNotes(true)});
+}
+
+function renderPatient(root){
+  const pt=state.patient;
+  const egfrWarnings=getEgfrWarnings();
+  let warnHTML='';
+  if(egfrWarnings.length)warnHTML=egfrWarnings.map(w=>`<div class="result ${w.level==='red'?'danger':'warn'}" style="margin-bottom:8px"><h4>⚠️ ${esc(w.text)}</h4></div>`).join('');
+
+  root.innerHTML=`
+    <div class="card">
+      <h3>Patient Profile</h3>
+      ${warnHTML}
+      <label class="field"><span class="lbl">Full Name <span style="color:var(--red)">*</span></span>
+        <input type="text" id="ptName" value="${escAttr(pt.name)}" placeholder="Patient's full name"><div class="validation-msg" id="nameErr">Name is required</div></label>
+      <div class="row">
+        <label class="field"><span class="lbl">Age <span style="color:var(--red)">*</span></span>
+          <input type="number" id="ptAge" value="${escAttr(pt.age)}" min="0" max="150"><div class="validation-msg" id="ageErr">Valid age required</div></label>
+        <label class="field"><span class="lbl">Gender</span>
+          <select id="ptGender"><option value="">— Select —</option><option value="Male" ${pt.gender==='Male'?'selected':''}>Male</option><option value="Female" ${pt.gender==='Female'?'selected':''}>Female</option><option value="Other" ${pt.gender==='Other'?'selected':''}>Other</option></select></label></div>
+      <div class="row">
+        <label class="field"><span class="lbl">Date & Time</span><input type="datetime-local" id="ptDT" value="${escAttr(pt.datetime)}"></label>
+        <label class="field"><span class="lbl">Weight (kg)</span><input type="number" id="ptWeight" min="0" max="400" value="${escAttr(pt.weight)}" step="0.1"></label></div>
+      <div class="row">
+        <label class="field"><span class="lbl">Height</span>
+          <div style="display:flex;gap:6px;">
+            <input type="number" id="ptHeight" min="0" max="300" value="${escAttr(pt.heightRaw!==undefined?pt.heightRaw:pt.height)}" step="0.1" placeholder="e.g. 170" style="flex:1;">
+            <select id="ptHeightUnit" style="flex:0 0 68px;">
+              <option value="cm" ${(pt.heightUnit||'cm')==='cm'?'selected':''}>cm</option>
+              <option value="in" ${pt.heightUnit==='in'?'selected':''}>in</option>
+            </select>
+          </div>
+        </label>
+        <label class="field"><span class="lbl">Blood Pressure</span><input type="text" id="ptBP" value="${escAttr(pt.bp)}" placeholder="e.g. 130/84"></label></div>
+      <div id="bmiDisplay"></div>
+      <div class="row">
+        <label class="field"><span class="lbl">Creatinine (\u00b5mol/L)</span><input type="number" id="ptCreatinine" min="0" max="2000" value="${escAttr(pt.creatinine)}" placeholder="e.g. 80" step="1"></label>
+        <label class="field"><span class="lbl">eGFR (mL/min/1.73m\u00b2)</span><input type="number" id="egfrIn" min="0" max="200" value="${escAttr(state.egfr)}" placeholder="auto or manual" step="1"></label>
+      </div>
+      <div id="renalCalcBox" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:-4px 0 12px;font-size:12px;color:var(--muted);"></div>
+      <p class="muted small">Renal function here drives the eGFR warnings shown on the Drugs, Regimen and Note tabs (e.g. metformin, SGLT2i dosing).</p>
+      <label class="field"><span class="lbl">Physical Findings</span><textarea id="ptFindings" placeholder="Relevant findings...">${esc(pt.findings)}</textarea></label>
+    </div>
+    <div class="card"><h3>Flowchart</h3>
+      <div class="flowchart" id="flowchart">
+        <div class="flow-step" id="fl-1"><div class="step-num">1</div><div class="step-label">Classify</div></div><div class="flow-arrow">→</div>
+        <div class="flow-step" id="fl-2"><div class="step-num">2</div><div class="step-label">Pathway</div></div><div class="flow-arrow">→</div>
+        <div class="flow-step" id="fl-3"><div class="step-num">3</div><div class="step-label">Regimen</div></div><div class="flow-arrow">→</div>
+        <div class="flow-step" id="fl-4"><div class="step-num">4</div><div class="step-label">Insulin</div></div><div class="flow-arrow">→</div>
+        <div class="flow-step" id="fl-5"><div class="step-num">5</div><div class="step-label">Labs</div></div><div class="flow-arrow">→</div>
+        <div class="flow-step" id="fl-6"><div class="step-num">6</div><div class="step-label">Notes</div></div></div></div>`;
+
+  const savePt=()=>{state.patient.name=document.getElementById('ptName').value;state.patient.age=document.getElementById('ptAge').value;state.patient.gender=document.getElementById('ptGender').value;state.patient.datetime=document.getElementById('ptDT').value;state.patient.weight=document.getElementById('ptWeight').value;const hRaw=document.getElementById('ptHeight').value;const hUnit=document.getElementById('ptHeightUnit').value;state.patient.heightRaw=hRaw;state.patient.heightUnit=hUnit;state.patient.height=hRaw?(hUnit==='in'?(parseFloat(hRaw)*2.54).toFixed(1):hRaw):'';state.patient.bp=document.getElementById('ptBP').value;state.patient.findings=document.getElementById('ptFindings').value;state.patient.creatinine=document.getElementById('ptCreatinine').value;state.egfr=document.getElementById('egfrIn').value;saveState();updateBMI();updateRenal();updateFlowchart()};
+  ['ptName','ptAge','ptGender','ptDT','ptWeight','ptHeight','ptHeightUnit','ptBP','ptFindings','ptCreatinine','egfrIn'].forEach(id=>{const el=document.getElementById(id);if(el){el.addEventListener('input',savePt);el.addEventListener('change',savePt);}});
+
+  updateBMI();
+  updateRenal();
+  updateFlowchart();
+}
+
+function renderNote(root){
+  const pt=state.patient;
+  const bmi=calcBMI(parseFloat(pt.weight),parseFloat(pt.height));
+  const egfrWarnings=getEgfrWarnings();
+  let warnHTML='';
+  if(egfrWarnings.length)warnHTML=egfrWarnings.map(w=>`<div class="result ${w.level==='red'?'danger':'warn'}" style="margin-bottom:8px"><h4>⚠️ ${esc(w.text)}</h4></div>`).join('');
+  const summaryLine=`${pt.name?esc(pt.name):'(no name entered)'} \u2014 ${pt.age||'\u2014'}y ${pt.gender||''} | Wt ${pt.weight||'\u2014'}kg | Ht ${pt.height||'\u2014'}cm${bmi?' | BMI '+bmi:''} | eGFR ${state.egfr||'\u2014'}`;
+
+  root.innerHTML=`
+    <div class="card no-print">
+      <h3>Patient Summary</h3>
+      <p class="muted small" style="margin-bottom:10px;">${summaryLine}</p>
+      ${!pt.name||!pt.age?'<div class="result warn"><h4>\u26a0\ufe0f Name and Age not set \u2014 go to the Patient tab first.</h4></div>':''}
+      ${warnHTML}
+    </div>
+    <div class="card no-print"><h3>📝 Plan & Instructions — select what to include</h3>
+      <p class="muted small">Untick anything you don't want printed on the note.</p>
+      <div id="planChecklist"></div>
+    </div>
+    <div class="card">
+      <h3 class="no-print">Clinical Note</h3>
+      <div class="btn-row no-print" style="margin-bottom:10px">
+        <button class="btn" id="genNotesBtn">📋 Generate</button>
+        <button class="btn ghost" id="copyBtn">📋 Copy</button>
+        <button class="btn ghost" onclick="printNote()">🖨️ Print</button>
+        <button class="btn ghost" id="pdfBtn">📄 PDF</button>
+        <button class="btn ghost" onclick="exportWord()">📝 Word</button></div>
+      <div class="slider-group no-print"><label>Top margin:</label>
+        <input type="range" id="borderSlider" min="0" max="80" value="${state.borderMargin}">
+        <span class="slider-val" id="sliderVal">${state.borderMargin}px</span></div>
+      <label class="opt no-print" style="margin-top:6px;">
+        <input type="checkbox" id="hwToggle" ${state.handwritten?'checked':''}>
+        <span>\u270D\uFE0F Handwritten style (Print/PDF only — needs internet on first use)</span>
+      </label>
+      <div class="no-print" id="hwFontRow" style="display:${state.handwritten?'block':'none'};margin:4px 0 0 24px;">
+        <select id="hwFontSel" style="font-size:12px;padding:2px 6px;">
+          <option value="kalam" ${state.handwrittenFont!=='caveat'?'selected':''}>Kalam</option>
+          <option value="caveat" ${state.handwrittenFont==='caveat'?'selected':''}>Caveat</option>
+        </select>
+      </div>
+      <div id="notesArea" class="note-print${state.handwritten?' handwritten':''}" style="margin-top:8px;min-height:100px${state.handwritten?`;--hw-font:'${state.handwrittenFont==='caveat'?'Caveat':'Kalam'}'`:''}">${state.noteGenerated?'':'<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px"><div style="font-size:28px;margin-bottom:6px">\uD83D\uDCDD</div>Click <b>Generate Notes</b> to create the note.</div>'}</div></div>`;
+
+  renderPlanChecklist(root);
+  document.getElementById('borderSlider').addEventListener('input',e=>{state.borderMargin=+e.target.value;saveState();document.getElementById('sliderVal').textContent=state.borderMargin+'px';document.getElementById('notesArea').style.paddingTop=state.borderMargin+'px'});
+  document.getElementById('hwToggle').addEventListener('change',e=>{state.handwritten=e.target.checked;saveState();document.getElementById('notesArea').classList.toggle('handwritten',state.handwritten);document.getElementById('hwFontRow').style.display=state.handwritten?'block':'none';if(state.handwritten)ensureHandwrittenFont();});
+  const hwFontSelEl=document.getElementById('hwFontSel');
+  if(hwFontSelEl)hwFontSelEl.addEventListener('change',e=>{state.handwrittenFont=e.target.value;saveState();const na=document.getElementById('notesArea');if(na)na.style.setProperty('--hw-font',e.target.value==='caveat'?"'Caveat'":"'Kalam'");if(state.handwritten)ensureHandwrittenFont();});
+  document.getElementById('genNotesBtn').addEventListener('click',()=>generateNotes(false));
+  document.getElementById('copyBtn').addEventListener('click',copyNote);
+  document.getElementById('pdfBtn').addEventListener('click',exportPDF);
+  updateFlowchart();
+  if(state.noteGenerated)generateNotes(true);
+}
+
+function updateBMI(){
+  const div=document.getElementById('bmiDisplay');if(!div)return;
+  const w=parseFloat(state.patient.weight),h=parseFloat(state.patient.height);
+  const bmi=calcBMI(w,h);
+  if(bmi)div.innerHTML=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:8px 12px;background:var(--bg);border-radius:10px"><span style="font-size:13px;color:var(--muted)">BMI:</span><span style="font-size:18px;font-weight:800;color:var(--navy)">${bmi}</span>${bmiTag(bmi)}</div>`;
+  else div.innerHTML='';
+}
+
+// Self-contained fallbacks — used only if shared/clinical-calc.js failed to load
+// (e.g. testing this file standalone, outside the full ED-Suite folder structure).
+function fbCockcroftGault(age, wt, sex, cr_umol){
+  const cr_mgdl = cr_umol/88.4;
+  let crcl = ((140-age)*wt)/(72*cr_mgdl);
+  if(String(sex).toUpperCase().charAt(0)==='F') crcl *= 0.85;
+  return Math.round(crcl);
+}
+function fbCkdEpi2021(age, sex, cr_umol){
+  const cr_mgdl = cr_umol/88.4;
+  const isFemale = String(sex).toUpperCase().charAt(0)==='F';
+  const k = isFemale?0.7:0.9, a = isFemale?-0.241:-0.302, sexFactor = isFemale?1.012:1.0;
+  const minR = Math.min(cr_mgdl/k,1), maxR = Math.max(cr_mgdl/k,1);
+  return Math.round(142 * Math.pow(minR,a) * Math.pow(maxR,-1.200) * Math.pow(0.9938,age) * sexFactor);
+}
+function updateRenal(){
+  const box=document.getElementById('renalCalcBox');if(!box)return;
+  const age=parseFloat(state.patient.age), sex=(state.patient.gender||'').charAt(0), wt=parseFloat(state.patient.weight), cr=parseFloat(state.patient.creatinine);
+  const haveEpi = age && sex && cr;
+  const haveCg = age && sex && wt && cr;
+  if(!haveEpi && !haveCg){
+    box.innerHTML = cr ? '<span>Enter age and gender to calculate eGFR.</span>' : '';
+    return;
+  }
+  const epi = haveEpi ? (window.ClinicalCalc ? ClinicalCalc.ckdEpi2021(age,sex,cr) : fbCkdEpi2021(age,sex,cr)) : null;
+  const cg = haveCg ? (window.ClinicalCalc ? ClinicalCalc.cockcroftGault(age,wt,sex,cr) : fbCockcroftGault(age,wt,sex,cr)) : null;
+  let html='';
+  html += epi!=null ? `<span>CKD-EPI: <b>${epi} mL/min/1.73m\u00b2</b></span>` : `<span>CKD-EPI: enter age + gender + creatinine</span>`;
+  html += cg!=null ? `<span>Cockcroft-Gault: <b>${cg} mL/min</b></span>` : `<span>Cockcroft-Gault: also needs weight</span>`;
+  if(epi!=null) html+=`<button type="button" class="btn-sm" onclick="document.getElementById('egfrIn').value=${epi};document.getElementById('egfrIn').dispatchEvent(new Event('change'));" style="padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:12px;">Use CKD-EPI \u2192 eGFR field</button>`;
+  box.innerHTML=html;
+}
+
+function updateFlowchart(){
+  const s=state;
+  const f1=!!s.classify.result,f2=(s.pathway.framework==='comorbidity'&&s.pathway.com.selected.length>0)||(s.pathway.framework==='glucose'&&s.pathway.gl.a1c),f3=s.regimen.length>0,f4=!!(s.insulin.basalLow||s.insulin.bolus||s.insulin.currentBasal),f5=s.labs.selected.length>0||s.labs.customLabs.length>0,f6=s.noteGenerated;
+  [['fl-1',f1],['fl-2',f2],['fl-3',f3],['fl-4',f4],['fl-5',f5],['fl-6',f6]].forEach(([id,active])=>{const el=document.getElementById(id);if(el)el.classList.toggle('active',active)});
+}
+
+function generateNotes(silent){
+  const pt=state.patient;
+  if(!silent){
+    let valid=true;
+    const nameEl=document.getElementById('ptName');
+    const ageEl=document.getElementById('ptAge');
+    const nameErrEl=document.getElementById('nameErr');
+    const ageErrEl=document.getElementById('ageErr');
+    if(!pt.name||!pt.name.trim()){
+      if(nameEl)nameEl.classList.add('invalid');
+      if(nameErrEl)nameErrEl.classList.add('show');
+      valid=false;
+    }else{
+      if(nameEl)nameEl.classList.remove('invalid');
+      if(nameErrEl)nameErrEl.classList.remove('show');
+    }
+    if(!pt.age||isNaN(pt.age)||pt.age<=0){
+      if(ageEl)ageEl.classList.add('invalid');
+      if(ageErrEl)ageErrEl.classList.add('show');
+      valid=false;
+    }else{
+      if(ageEl)ageEl.classList.remove('invalid');
+      if(ageErrEl)ageErrEl.classList.remove('show');
+    }
+    if(!valid){toast('Fill Name and Age on the Patient tab first.');return}
+  }
+  state.noteGenerated=true;saveState();
+
+  const gender=pt.gender||'Not specified',dt=pt.datetime?formatDateTime(pt.datetime):'Not recorded';
+  const weight=pt.weight||'Not recorded',height=pt.height||'Not recorded',bp=pt.bp||'Not recorded',findings=pt.findings||'None documented';
+  const bmi=calcBMI(parseFloat(pt.weight),parseFloat(pt.height));
+  const egfrVal=state.egfr||'Not recorded';
+  const ins=state.insulin;
+  const basal=(ins.basalLow||ins.bolus)?(ins.basalLow||'N/A'):'N/A',bolus=ins.bolus||'N/A',adjNotes=ins.adjNotes||'No adjustment notes.';
+  const insProvided=basal!=='N/A'||bolus!=='N/A';
+
+  // Regimen
+  let regHTML='';
+  if(state.regimen.length){
+    regHTML=state.regimen.map((r,i)=>`<div class="entry"><span style="font-weight:700">${i+1}. ${esc(r.drug)}</span>${r.isCustom?` <span class="tag amber">${esc(r.category||'Custom')}</span>`:''}<br><span style="color:var(--muted);margin-left:1.2em">Brand: ${esc(r.brand)} | Strength: ${esc(r.strength)} | Dosage: ${esc(r.dosage)}</span></div>`).join('');
+  }else regHTML='<div style="color:var(--muted);font-style:italic">No oral medications prescribed.</div>';
+
+  // Pathway
+  let pathHTML='';
+  if(state.pathway.framework==='comorbidity'&&state.pathway.com.selected.length){const a=state.pathway.com.priority||state.pathway.com.selected[0];pathHTML=`<b>Pathway:</b> ${PATHWAY_INFO[a]?PATHWAY_INFO[a].label:'General'}`}
+  else if(state.pathway.framework==='glucose'&&state.pathway.gl.a1c)pathHTML=`<b>A1C:</b> ${state.pathway.gl.a1c}%`;
+
+  // Labs
+  let labsHTML='';
+  const selLabs=state.labs.selected.map(k=>{const l=DEFAULT_LABS.find(x=>x.key===k);return l?l.label:k});
+  const allLabs=[...selLabs,...state.labs.customLabs];
+  if(allLabs.length)labsHTML=allLabs.map(l=>`<div class="entry">${esc(l)}: ____________________</div>`).join('');
+  else labsHTML='<div style="color:var(--muted);font-style:italic">No investigations selected.</div>';
+
+  // eGFR warnings for plan
+  const egfrNum=parseFloat(state.egfr);
+
+  // Plan — filtered by user's checklist selections (default: all included)
+  const planItems=buildPlanItems();
+  const activeItems=planItems.filter(it=>state.planSelected[it.key]!==false);
+  const p=activeItems.map((it,i)=>`${i+1}. ${esc(it.text)}`);
+
+  const html=`
+    <h3>PATIENT DEMOGRAPHICS</h3>
+    <div><b>Name:</b> ${esc(pt.name.trim())}<br><b>Age / Gender:</b> ${esc(pt.age)} years / ${esc(gender)}<br>
+    <b>Date:</b> ${esc(dt)}<br><b>Weight:</b> ${weight==='Not recorded'?weight:weight+' kg'}<br>
+    <b>Height:</b> ${height==='Not recorded'?height:height+' cm'}${bmi?` | <b>BMI:</b> ${bmi} (${bmiClass(bmi)})`:''}<br>
+    <b>BP:</b> ${esc(bp)}<br><b>eGFR:</b> ${esc(String(egfrVal))} ${!isNaN(egfrNum)?'mL/min/1.73m²':''}<br>
+    <b>Findings:</b> ${esc(findings)}</div>
+    <h3>CLASSIFICATION</h3><div>${state.classify.result||'Not assessed.'}</div>
+    ${pathHTML?`<h3>TREATMENT PATHWAY</h3><div>${pathHTML}</div>`:''}
+    <h3>DRUG REGIMEN</h3><div>${regHTML}</div>
+    ${insProvided?`<h3>INSULIN THERAPY</h3><div><b>Basal:</b> ${esc(String(basal))} U/day<br><b>Bolus:</b> ${esc(String(bolus))} U/meal<br><b>Notes:</b> ${esc(adjNotes)}</div>`:''}
+    <h3>INVESTIGATIONS</h3><div>${labsHTML}</div>
+    <h3>PLAN & INSTRUCTIONS</h3><div>${p.join('<br>')}</div>
+    <div class="sig">Consultant Signature: ___________________________<br>Date: ${esc(dt)}</div>`;
+
+  document.getElementById('notesArea').innerHTML=html;
+  document.getElementById('notesArea').style.paddingTop=state.borderMargin+'px';
+  updateFlowchart();
+  if(!silent)toast('Notes generated.');
+  window._noteText=buildPlainText(pt,gender,dt,weight,height,bmi,egfrVal,bp,findings,basal,bolus,adjNotes,insProvided,p,allLabs);
+}
+
+function buildPlainText(pt,gender,dt,weight,height,bmi,egfrVal,bp,findings,basal,bolus,adjNotes,insProvided,planLines,allLabs){
+  const L=[];
+  L.push('T2D NAVIGATOR — CLINICAL NOTE');L.push('Generated: '+new Date().toLocaleString());L.push('='.repeat(50));
+  L.push('\nPATIENT: '+pt.name.trim()+' | Age: '+pt.age+' | Gender: '+gender);
+  L.push('Date: '+dt+' | Weight: '+(weight==='Not recorded'?weight:weight+' kg'));
+  L.push('Height: '+(height==='Not recorded'?height:height+' cm')+(bmi?' | BMI: '+bmi:''));
+  L.push('BP: '+bp+' | eGFR: '+egfrVal);
+  L.push('Findings: '+findings);
+  L.push('\nCLASSIFICATION: '+(state.classify.result||'Not assessed'));
+  if(state.pathway.framework==='comorbidity'&&state.pathway.com.selected.length){const a=state.pathway.com.priority||state.pathway.com.selected[0];L.push('PATHWAY: '+(PATHWAY_INFO[a]?PATHWAY_INFO[a].label:'General'))}
+  L.push('\nDRUG REGIMEN:');
+  if(state.regimen.length)state.regimen.forEach((r,i)=>L.push(`  ${i+1}. ${r.drug}${r.isCustom?' ['+(r.category||'Custom')+']':''} — ${r.brand}, ${r.strength}, ${r.dosage}`));
+  else L.push('  None prescribed.');
+  if(insProvided)L.push('\nINSULIN: Basal='+basal+' Bolus='+bolus+' | '+adjNotes);
+  if(allLabs.length){L.push('\nINVESTIGATIONS:');allLabs.forEach(l=>L.push('  • '+l+': _____________'))}
+  L.push('\nPLAN:');planLines.forEach(l=>L.push('  '+stripHtml(l)));
+  L.push('\n'+'='.repeat(50));L.push('Consultant Signature: ___________________________');
+  return L.join('\n');
+}
+
+function ensureHandwrittenFont(){if(window.ClinicalCalc){ClinicalCalc.ensureHandwrittenFont(state.handwrittenFont);return;}if(document.getElementById('hwFontLink'))return;const link=document.createElement('link');link.id='hwFontLink';link.rel='stylesheet';link.href='https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&display=swap';document.head.appendChild(link)}
+function printNote(){
+  if(!state.noteGenerated){toast('Generate notes first.');return}
+  if(state.handwritten){
+    ensureHandwrittenFont();
+    let printed=false;const go=()=>{if(printed)return;printed=true;window.print()};
+    if(document.fonts&&document.fonts.ready){document.fonts.ready.then(go).catch(go)}
+    setTimeout(go,1200);
+  }else window.print();
+}
+
+function copyNote(){
+  const text=window._noteText;
+  if(!text){toast('Generate notes first.');return}
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(()=>toast('Copied to clipboard!')).catch(()=>fallbackCopy(text));
+  }else fallbackCopy(text);
+}
+function fallbackCopy(text){
+  const ta=document.createElement('textarea');ta.value=text;ta.style.cssText='position:fixed;left:-9999px';
+  document.body.appendChild(ta);ta.select();
+  try{document.execCommand('copy');toast('Copied!')}catch(e){toast('Copy failed. Long-press the note to copy manually.')}
+  document.body.removeChild(ta);
+}
+
+function exportPDF(){
+  if(!state.noteGenerated){toast('Generate notes first.');return}
+  /* Use browser Print (works offline, no CDN dependency) */
+  if(state.handwritten){
+    ensureHandwrittenFont();
+    let printed=false;const go=()=>{if(printed)return;printed=true;window.print()};
+    if(document.fonts&&document.fonts.ready){document.fonts.ready.then(go).catch(go)}
+    setTimeout(go,1200);
+  }else window.print();
+}
+
+function exportWord(){
+  if(!state.noteGenerated){toast('Generate notes first.');return}
+  if(typeof DocxLite==='undefined'){toast('Word export is still loading — try again in a moment');return}
+  const el=document.getElementById('notesArea');
+  const topPx=state.borderMargin||20;
+  const topMm=Math.round(topPx*0.264583*10)/10;
+  const fname='T2DM_Note_'+(state.patient.name||'patient').replace(/[^a-zA-Z0-9]/g,'_')+'_'+new Date().toISOString().slice(0,10);
+  toast('Generating Word document…');
+  DocxLite.exportRealDocx(el, topMm, 12, fname, function(ok){
+    toast(ok?'Word file saved!':'Word export failed — check internet connection');
+  });
+}
+
+</script>
+</body>
+</html>

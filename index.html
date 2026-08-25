@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=overlays-content">
+<meta name="theme-color" content="#0B1929">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ED Suite">
+<title>Emergency Department Suite</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<style>
+:root{
+  --bg:#0B1929;--bg2:#101E30;--card:#152238;--card-hover:#1A2D4A;
+  --border:rgba(255,255,255,.08);--text:#E8EDF2;--text-dim:#8BA3BE;--text-muted:#5A7A99;
+  --teal:#0E9B8A;--teal-glow:rgba(14,155,138,.15);
+  --red:#E54D4D;--amber:#E5A53D;--blue:#4DA6E5;--purple:#9B6DE5;--green:#4DE57A;
+  --r:16px;--shadow:0 4px 24px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
+body{padding:env(safe-area-inset-top) 16px 32px;display:flex;flex-direction:column;align-items:center}
+
+.hero{text-align:center;padding:40px 16px 24px;max-width:600px}
+.hero-icon{font-size:48px;margin-bottom:12px;filter:drop-shadow(0 4px 12px rgba(14,155,138,.3))}
+.hero h1{font-size:1.6rem;font-weight:800;letter-spacing:-.02em;line-height:1.2;margin-bottom:8px}
+.hero h1 .accent{color:var(--teal)}
+.hero p{color:var(--text-dim);font-size:.92rem;line-height:1.5;max-width:440px;margin:0 auto}
+.hero .badge{display:inline-block;background:rgba(14,155,138,.15);color:var(--teal);font-size:.7rem;font-weight:700;padding:3px 10px;border-radius:20px;margin-top:12px;letter-spacing:.5px;text-transform:uppercase}
+
+.grid{display:grid;grid-template-columns:1fr;gap:14px;max-width:600px;width:100%;margin-top:8px}
+@media(min-width:480px){.grid{grid-template-columns:1fr 1fr}}
+
+.tile{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:20px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;text-decoration:none;color:var(--text);display:block}
+.tile:active{transform:scale(.97);background:var(--card-hover)}
+.tile:hover{border-color:rgba(255,255,255,.15);box-shadow:var(--shadow)}
+.tile .tile-accent{position:absolute;top:0;left:0;right:0;height:4px}
+.tile .tile-icon{font-size:2rem;margin-bottom:10px;display:block}
+.tile .tile-title{font-size:1.05rem;font-weight:700;margin-bottom:4px}
+.tile .tile-desc{font-size:.8rem;color:var(--text-dim);line-height:1.4}
+.tile .tile-tag{display:inline-block;font-size:.65rem;font-weight:700;padding:2px 8px;border-radius:10px;margin-top:10px;letter-spacing:.4px;text-transform:uppercase}
+
+.tile-ecg .tile-accent{background:var(--red)}
+.tile-ecg .tile-tag{background:rgba(229,77,77,.15);color:var(--red)}
+.tile-icu .tile-accent{background:var(--blue)}
+.tile-icu .tile-tag{background:rgba(77,166,229,.15);color:var(--blue)}
+.tile-airway .tile-accent{background:var(--amber)}
+.tile-airway .tile-tag{background:rgba(229,165,61,.15);color:var(--amber)}
+.tile-consult .tile-accent{background:var(--purple)}
+.tile-consult .tile-tag{background:rgba(155,109,229,.15);color:var(--purple)}
+.tile-diabetes .tile-accent{background:var(--green)}
+.tile-diabetes .tile-tag{background:rgba(77,229,122,.15);color:var(--green)}
+
+.footer{text-align:center;padding:32px 16px 16px;color:var(--text-muted);font-size:.75rem;max-width:600px}
+.footer p{margin-bottom:4px}
+.offline-badge{display:none;position:fixed;top:12px;right:12px;background:var(--amber);color:#1a1a1a;font-size:.7rem;font-weight:700;padding:4px 10px;border-radius:12px;z-index:100}
+.offline-badge.show{display:block}
+</style>
+</head>
+<body>
+
+<div class="offline-badge" id="offlineBadge">⚡ Offline Ready</div>
+
+<div class="hero">
+  <div class="hero-icon">🏥</div>
+  <h1>Emergency <span class="accent">Department</span> Suite</h1>
+  <p>Clinical decision support tools designed for offline use in the Emergency Department. Tap any module to begin.</p>
+  <div class="badge">Works Offline • No Internet Required</div>
+</div>
+
+<div class="grid">
+  <a class="tile tile-ecg" href="modules/ecg/index.html">
+    <div class="tile-accent"></div>
+    <span class="tile-icon">🫀</span>
+    <div class="tile-title">ECG Decision Support</div>
+    <div class="tile-desc">Tachycardia algorithm, ECG measurement calculator, pattern recognition, and decision tree</div>
+    <span class="tile-tag">Cardiac</span>
+  </a>
+
+  <a class="tile tile-icu" href="modules/icu/index.html">
+    <div class="tile-accent"></div>
+    <span class="tile-icon">🏥</span>
+    <div class="tile-title">ICU Admission Suite</div>
+    <div class="tile-desc">22-section admission form with qSOFA, SOFA, APACHE II, delirium screen, SBAR handover</div>
+    <span class="tile-tag">Critical Care</span>
+  </a>
+
+  <a class="tile tile-airway" href="modules/airway/index.html">
+    <div class="tile-accent"></div>
+    <span class="tile-icon">🫁</span>
+    <div class="tile-title">ER Airway Assistant</div>
+    <div class="tile-desc">RSI workflow, drug calculator, failed airway algorithm, cricothyrotomy, ventilator settings</div>
+    <span class="tile-tag">Airway</span>
+  </a>
+
+  <a class="tile tile-consult" href="modules/consult/index.html">
+    <div class="tile-accent"></div>
+    <span class="tile-icon">📋</span>
+    <div class="tile-title">Consultant Assistant</div>
+    <div class="tile-desc">Complaint-based workflows: fever, breathlessness, abdominal pain, DKA, trauma, stroke</div>
+    <span class="tile-tag">Clinical</span>
+  </a>
+
+  <a class="tile tile-diabetes" href="modules/diabetes/index.html">
+    <div class="tile-accent"></div>
+    <span class="tile-icon">💉</span>
+    <div class="tile-title">T2DM Navigator</div>
+    <div class="tile-desc">Type 2 diabetes clinical decision support — medication selection, HbA1c targets, complications screening</div>
+    <span class="tile-tag">Endocrine</span>
+  </a>
+</div>
+
+<div class="footer">
+  <p><strong>⚕️ Clinical Reference Tools</strong> — Not a substitute for clinical judgment</p>
+  <p>Verify all doses and protocols against your local guidelines</p>
+  <p style="margin-top:8px;opacity:.6">v1.0 • Built for Emergency Medicine</p>
+</div>
+
+<script>
+// Register service worker
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(err => console.log('SW failed:', err));
+  });
+}
+
+// Offline detection
+window.addEventListener('online', () => document.getElementById('offlineBadge').classList.remove('show'));
+window.addEventListener('offline', () => document.getElementById('offlineBadge').classList.add('show'));
+if (!navigator.onLine) document.getElementById('offlineBadge').classList.add('show');
+</script>
+</body>
+</html>

@@ -1,0 +1,1487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=overlays-content">
+<meta name="theme-color" content="#101826">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="../../manifest.json">
+<link rel="icon" href="../../icons/icon-192.png">
+<link rel="apple-touch-icon" href="../../icons/icon-192.png">
+<link rel="manifest" href="../../manifest.json">
+<title>ED Tachycardia Algorithm — ECG Decision Support</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F4F6F5;
+  --card:#FFFFFF;
+  --ink:#101826;
+  --ink-soft:#4B5A6B;
+  --line:#E2E8ED;
+  --trace:#B91C34;
+  --trace-dark:#7A1223;
+  --grid-thin:#F6C9C5;
+  --grid-bold:#EC9A94;
+  --teal:#0F6B5C;
+  --teal-soft:#E4F1EE;
+  --amber:#8A5B00;
+  --amber-soft:#FBF1DD;
+  --danger:#A61B2B;
+  --danger-soft:#FBE7E9;
+  --mono:'IBM Plex Mono', monospace;
+  --display:'Space Grotesk', sans-serif;
+  --body:'Inter', system-ui, sans-serif;
+}
+*{ box-sizing:border-box; margin:0; padding:0; }
+body{
+  font-family:var(--body);
+  background:var(--paper);
+  color:var(--ink);
+  padding:14px;
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+.app-container{
+  max-width:1200px;
+  width:100%;
+  background:var(--card);
+  border-radius:20px;
+  border:1px solid var(--line);
+  box-shadow:0 24px 60px rgba(16,24,38,0.08);
+  overflow:hidden;
+}
+
+/* ---------- Monitor header (signature element) ---------- */
+.monitor{
+  background:linear-gradient(180deg,#0B121D,#101826);
+  padding:18px 24px 14px;
+  position:relative;
+}
+.monitor-top{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:10px;
+  margin-bottom:10px;
+}
+.monitor-top h1{
+  font-family:var(--display);
+  font-size:20px;
+  font-weight:700;
+  color:#F4F6F5;
+  letter-spacing:0.2px;
+  display:flex;
+  align-items:baseline;
+  gap:10px;
+}
+.monitor-top h1 span.tag{
+  font-family:var(--mono);
+  font-size:11px;
+  font-weight:500;
+  color:#8FE3C7;
+  background:rgba(143,227,199,0.12);
+  border:1px solid rgba(143,227,199,0.25);
+  padding:3px 9px;
+  border-radius:20px;
+  letter-spacing:0.4px;
+}
+.monitor-actions{ display:flex; gap:8px; flex-wrap:wrap; }
+.monitor-actions button{
+  background:rgba(255,255,255,0.06);
+  border:1px solid rgba(255,255,255,0.12);
+  color:#DCE4EA;
+  padding:7px 14px;
+  border-radius:20px;
+  font-size:12.5px;
+  font-weight:600;
+  cursor:pointer;
+  font-family:var(--body);
+  transition:0.15s;
+}
+.monitor-actions button:hover{ background:rgba(255,255,255,0.13); }
+.monitor-actions button.primary{
+  background:var(--trace);
+  border-color:var(--trace);
+  color:#fff;
+}
+.monitor-actions button.primary:hover{ background:#9c1729; }
+
+.monitor-strip{
+  width:100%;
+  height:56px;
+  overflow:hidden;
+  border-radius:10px;
+  background:#0B121D;
+  border:1px solid rgba(143,227,199,0.18);
+  position:relative;
+}
+.monitor-strip .sweep{
+  position:absolute;
+  top:0; left:0;
+  height:100%;
+  width:200%;
+  animation:sweep 6s linear infinite;
+}
+.monitor-strip .sweep svg{ height:100%; width:50%; float:left; display:block; }
+@keyframes sweep{ from{ transform:translateX(0);} to{ transform:translateX(-50%);} }
+@media (prefers-reduced-motion:reduce){ .monitor-strip .sweep{ animation:none; } }
+
+/* ---------- Path bar ---------- */
+.path-bar{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px 8px;
+  background:var(--paper);
+  padding:10px 20px;
+  font-size:12.5px;
+  font-weight:500;
+  color:var(--ink-soft);
+  border-bottom:1px solid var(--line);
+  align-items:center;
+}
+.path-bar .step{ display:flex; align-items:center; gap:5px; }
+.path-bar .step .label{
+  font-family:var(--mono);
+  background:#fff;
+  border:1px solid var(--line);
+  padding:2px 8px;
+  border-radius:6px;
+  font-size:10.5px;
+  color:var(--ink-soft);
+}
+.path-bar .step .value{ font-weight:700; color:var(--ink); }
+.path-bar .arrow{ color:#B9C2CB; }
+.path-bar .reset-btn{
+  margin-left:auto;
+  background:none; border:none;
+  color:var(--trace);
+  font-weight:600; font-size:12px;
+  cursor:pointer;
+  text-decoration:underline dotted;
+}
+
+.main-pad{ padding:20px 24px 26px; }
+
+.decision-card{
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:22px 24px;
+  margin-bottom:18px;
+}
+.decision-card .question{
+  font-family:var(--display);
+  font-size:19px;
+  font-weight:700;
+  color:var(--ink);
+  margin-bottom:8px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.decision-card .question .badge{
+  font-family:var(--mono);
+  font-size:11px;
+  font-weight:600;
+  background:var(--teal-soft);
+  color:var(--teal);
+  padding:3px 10px;
+  border-radius:20px;
+}
+.decision-card .subtext{
+  color:var(--ink-soft);
+  font-size:13.5px;
+  margin-bottom:16px;
+  border-left:3px solid var(--grid-bold);
+  background:#FFFAF9;
+  border-radius:0 10px 10px 0;
+  padding:10px 14px;
+  line-height:1.55;
+}
+.decision-card .subtext strong{ color:var(--ink); }
+.visual-compare{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+  margin-bottom:16px;
+}
+.visual-compare .vc-box{
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:10px 12px;
+  background:#FFFDFC;
+}
+.visual-compare .vc-box .vc-title{
+  font-size:11.5px;
+  font-weight:700;
+  color:var(--ink-soft);
+  margin-bottom:6px;
+  text-transform:uppercase;
+  letter-spacing:0.3px;
+}
+.visual-compare svg{ width:100%; height:auto; display:block; }
+.visual-compare .vc-cap{ font-size:11px; color:var(--ink-soft); margin-top:4px; line-height:1.4; }
+.visual-compare .vc-cap b{ color:var(--ink); }
+
+.options-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(230px, 1fr));
+  gap:10px;
+}
+.options-grid .opt-btn{
+  background:#FBFCFC;
+  border:1.5px solid var(--line);
+  border-radius:12px;
+  padding:13px 16px;
+  font-weight:600;
+  font-size:14px;
+  color:var(--ink);
+  cursor:pointer;
+  transition:0.15s;
+  text-align:left;
+  display:flex;
+  align-items:flex-start;
+  gap:10px;
+  font-family:var(--body);
+}
+.options-grid .opt-btn:hover{
+  border-color:var(--trace);
+  background:#FFF7F7;
+  transform:translateY(-1px);
+}
+.options-grid .opt-btn .icon{ font-size:17px; line-height:1.3; }
+.options-grid .opt-btn .desc{
+  font-weight:400;
+  font-size:11.5px;
+  color:var(--ink-soft);
+  display:block;
+  margin-top:3px;
+  line-height:1.4;
+}
+
+.terminal{
+  background:#FBFCFC;
+  border-radius:16px;
+  padding:20px 24px;
+  border:1.5px solid var(--teal);
+}
+.terminal .diagnosis{
+  font-family:var(--display);
+  font-size:20px;
+  font-weight:700;
+  color:var(--ink);
+  margin-bottom:12px;
+}
+.terminal .diagnosis .highlight{
+  background:var(--teal-soft);
+  color:var(--teal);
+  padding:3px 14px;
+  border-radius:20px;
+  font-size:17px;
+}
+.terminal .management{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:14px;
+}
+.terminal .management .mgmt-box{
+  background:#fff;
+  border-radius:12px;
+  padding:14px 18px;
+  border:1px solid var(--line);
+}
+.terminal .management .mgmt-box h4{
+  font-size:13px;
+  font-weight:700;
+  color:var(--ink-soft);
+  margin-bottom:8px;
+  text-transform:uppercase;
+  letter-spacing:0.3px;
+}
+.terminal .management .mgmt-box ul{ list-style:none; font-size:13px; color:var(--ink); line-height:1.7; }
+.terminal .management .mgmt-box ul li::before{ content:"— "; color:var(--trace); font-weight:700; }
+.terminal .management .mgmt-box.danger{ border-color:var(--danger); background:var(--danger-soft); }
+.terminal .management .mgmt-box.danger h4{ color:var(--danger); }
+.terminal .management .mgmt-box.warn{ border-color:#DCAA3A; background:var(--amber-soft); }
+.terminal .management .mgmt-box.warn h4{ color:var(--amber); }
+
+.panels-row{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin:18px 0 6px; }
+.panel{ background:#FBFCFC; border-radius:14px; border:1px solid var(--line); padding:15px 18px; }
+.panel h3{
+  font-size:13.5px; font-weight:700; color:var(--ink);
+  margin-bottom:9px; display:flex; align-items:center; gap:6px;
+  cursor:pointer; user-select:none;
+  font-family:var(--display);
+}
+.panel h3 .toggle{ margin-left:auto; font-size:13px; color:var(--ink-soft); }
+.panel .panel-content{ font-size:12.5px; color:var(--ink-soft); line-height:1.6; }
+.panel .panel-content table{ width:100%; border-collapse:collapse; font-size:12px; }
+.panel .panel-content table td, .panel .panel-content table th{ padding:5px 6px; border-bottom:1px solid var(--line); }
+.panel .panel-content table th{ text-align:left; font-weight:700; color:var(--ink); }
+.panel .panel-content .checklist{ display:grid; grid-template-columns:1fr 1fr; gap:4px 12px; font-size:12px; font-family:var(--mono); }
+.panel .panel-content .checklist .val{ font-weight:600; color:var(--trace-dark); }
+
+.modal-overlay{
+  position:fixed; inset:0; background:rgba(10,15,24,0.55);
+  backdrop-filter:blur(3px);
+  display:none; align-items:center; justify-content:center;
+  z-index:1000; padding:16px;
+}
+.modal-overlay.active{ display:flex; }
+.modal{
+  background:#fff; border-radius:20px; max-width:900px; width:100%;
+  max-height:92vh; overflow-y:auto; padding:24px 26px;
+  box-shadow:0 40px 90px rgba(0,0,0,0.28);
+  animation:modalIn 0.2s ease;
+}
+@keyframes modalIn{ 0%{opacity:0; transform:scale(0.97) translateY(14px);} 100%{opacity:1; transform:scale(1) translateY(0);} }
+.modal .modal-header{
+  display:flex; justify-content:space-between; align-items:center;
+  margin-bottom:16px; border-bottom:1px solid var(--line); padding-bottom:12px;
+}
+.modal .modal-header h2{ font-family:var(--display); font-size:18px; font-weight:700; color:var(--ink); }
+.modal .modal-header .close{
+  background:none; border:none; font-size:22px; cursor:pointer; color:var(--ink-soft); line-height:1;
+}
+.modal .modal-body{ font-size:13.5px; color:var(--ink-soft); line-height:1.65; }
+
+.calc-grid{ display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin:14px 0; }
+.calc-grid .field{ display:flex; flex-direction:column; gap:4px; }
+.calc-grid .field label{ font-weight:600; font-size:11.5px; color:var(--ink-soft); }
+.calc-grid .field input{
+  padding:9px 10px; border:1.5px solid var(--line); border-radius:10px;
+  font-size:14px; width:100%; background:#FBFCFC; font-family:var(--mono);
+}
+.calc-grid .field input:focus{ border-color:var(--trace); outline:none; background:#fff; }
+
+.calc-strip-wrap{ background:#fff; border:1px solid var(--line); border-radius:14px; padding:12px; margin-top:6px; }
+.calc-strip-wrap svg{ width:100%; height:auto; display:block; }
+
+.calc-results{
+  background:var(--teal-soft); border-radius:12px; padding:14px 16px; margin-top:14px;
+  display:grid; grid-template-columns:repeat(auto-fit, minmax(110px,1fr)); gap:10px;
+}
+.calc-results .result-item{ text-align:center; background:#fff; border-radius:10px; padding:9px 6px; }
+.calc-results .result-item .rlabel{ font-size:10px; font-weight:700; color:var(--ink-soft); text-transform:uppercase; letter-spacing:0.3px; }
+.calc-results .result-item .rvalue{ font-family:var(--mono); font-size:19px; font-weight:600; color:var(--trace-dark); margin-top:2px; }
+.calc-results .result-item .runit{ font-size:11px; color:var(--ink-soft); }
+
+.ecg-gallery{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin:14px 0; }
+.ecg-gallery .ecg-card{ background:#fff; border-radius:14px; border:1px solid var(--line); padding:12px; }
+.ecg-gallery .ecg-card svg{ width:100%; height:auto; border-radius:8px; display:block; }
+.ecg-gallery .ecg-card .caption{ font-size:12.5px; font-weight:700; color:var(--ink); margin-top:8px; }
+.ecg-gallery .ecg-card .caption small{ font-weight:400; color:var(--ink-soft); display:block; font-size:11px; margin-top:2px; }
+
+.deploy-panel{ background:var(--paper); border:1px dashed #C7D0D6; border-radius:14px; padding:16px 18px; margin-top:16px; font-size:12.5px; color:var(--ink-soft); line-height:1.7; }
+.deploy-panel h4{ font-family:var(--display); font-size:13.5px; color:var(--ink); margin-bottom:6px; }
+.deploy-panel code{ background:#fff; border:1px solid var(--line); padding:1px 6px; border-radius:5px; font-family:var(--mono); font-size:11.5px; color:var(--trace-dark); }
+.deploy-panel ol{ padding-left:18px; margin-top:4px; }
+
+@media (max-width:820px){
+  .main-pad{ padding:16px; }
+  .decision-card{ padding:16px; }
+  .options-grid{ grid-template-columns:1fr; }
+  .panels-row{ grid-template-columns:1fr; }
+  .terminal .management{ grid-template-columns:1fr; }
+  .calc-grid{ grid-template-columns:1fr 1fr; }
+  .ecg-gallery{ grid-template-columns:1fr; }
+  .visual-compare{ grid-template-columns:1fr; }
+  .monitor-top h1{ font-size:16px; }
+}
+
+.text-muted{ color:var(--ink-soft); font-size:12.5px; }
+.divider{ border:none; border-top:1px solid var(--line); margin:16px 0; }
+.btn-sm{
+  background:var(--paper); border:1px solid var(--line); padding:6px 14px; border-radius:20px;
+  font-weight:600; font-size:12px; color:var(--ink); cursor:pointer;
+}
+.btn-sm:hover{ border-color:var(--trace); color:var(--trace-dark); }
+.btn-sm.primary{ background:var(--trace); color:#fff; border-color:var(--trace); }
+.btn-sm.primary:hover{ background:#9c1729; color:#fff; }
+
+.tree-viz{ background:var(--paper); border-radius:14px; padding:16px; margin-top:10px; font-size:12px; line-height:2.1; }
+.tree-viz .tree-node{
+  display:inline-block; background:#fff; border:1px solid var(--line);
+  padding:4px 10px; border-radius:8px; margin:2px; font-weight:600; font-family:var(--mono); font-size:11.5px;
+}
+.tree-viz .tree-node.active{ background:var(--trace); color:#fff; border-color:var(--trace); }
+
+footer.app-footer{
+  font-size:11.5px; color:#8A97A3; border-top:1px solid var(--line); padding:14px 24px;
+  display:flex; justify-content:space-between; flex-wrap:wrap; gap:6px;
+}
+</style>
+<script src="../../shared/docx-lite.js" defer></script>
+</head>
+<body>
+
+<div class="app-container" id="app">
+
+  <div class="monitor">
+    <div class="monitor-top">
+      <h1>ED Tachycardia Algorithm <span class="tag">v4.0 · OFFLINE-READY</span></h1>
+      <div class="monitor-actions">
+        <a href="../../index.html" style="background:rgba(255,255,255,0.08);color:#F4F6F5;border:1px solid rgba(255,255,255,0.15);padding:6px 14px;border-radius:8px;font:600 13px/1 'Inter',sans-serif;text-decoration:none;cursor:pointer">⌂ ED Suite</a>
+        <button onclick="openModal('calcModal')">Calculator</button>
+        <button onclick="openModal('galleryModal')">ECG Examples</button>
+        <button onclick="openModal('treeModal')">Algorithm Tree</button>
+        <button class="primary" onclick="resetAlgorithm()">Reset</button>
+      </div>
+    </div>
+    <div class="monitor-strip" id="monitorStrip"></div>
+  </div>
+
+  <div class="path-bar" id="pathBar">
+    <span class="step"><span class="label">START</span></span>
+    <span class="arrow">→</span>
+    <span class="step" id="pathStep1"><span class="label">1</span> <span class="value" id="pathVal1">—</span></span>
+    <span class="arrow">→</span>
+    <span class="step" id="pathStep2"><span class="label">2</span> <span class="value" id="pathVal2">—</span></span>
+    <span class="arrow">→</span>
+    <span class="step" id="pathStep3"><span class="label">3</span> <span class="value" id="pathVal3">—</span></span>
+    <span class="arrow" id="pathArrow4" style="display:none;">→</span>
+    <span class="step" id="pathStep4" style="display:none;"><span class="label">4</span> <span class="value" id="pathVal4">—</span></span>
+    <button class="reset-btn" onclick="resetAlgorithm()">start over</button>
+  </div>
+
+  <div class="main-pad">
+    <div class="decision-card" id="decisionCard"></div>
+
+    <div class="panels-row">
+      <div class="panel">
+        <h3 onclick="togglePanel(this)">Clinical Clues <span class="toggle">▼</span></h3>
+        <div class="panel-content">
+          <table>
+            <tr><th>Finding</th><th>Diagnosis favoured</th></tr>
+            <tr><td>Fever, pain, anxiety</td><td>Sinus tachycardia</td></tr>
+            <tr><td>Sudden onset / offset</td><td>AVNRT / AVRT</td></tr>
+            <tr><td>COPD, hypoxia</td><td>Multifocal AT</td></tr>
+            <tr><td>Hyperthyroidism</td><td>AF, sinus tachycardia</td></tr>
+            <tr><td>Structural heart disease</td><td>VT</td></tr>
+            <tr><td>Young patient, delta wave</td><td>AVRT / WPW</td></tr>
+            <tr><td>Recent MI</td><td>VT</td></tr>
+          </table>
+        </div>
+      </div>
+      <div class="panel">
+        <h3 onclick="togglePanel(this)">ECG Measurements <span class="toggle">▼</span></h3>
+        <div class="panel-content">
+          <div class="checklist">
+            <span>Heart rate <span class="val" id="measHR">—</span></span>
+            <span>QRS width <span class="val" id="measQRS">—</span></span>
+            <span>PR interval <span class="val" id="measPR">—</span></span>
+            <span>RP interval <span class="val" id="measRP">—</span></span>
+            <span>P morphology <span class="val" id="measP">—</span></span>
+            <span>Axis <span class="val" id="measAxis">—</span></span>
+            <span>QTc <span class="val" id="measQTc">—</span></span>
+            <span>AV relation <span class="val" id="measAV">—</span></span>
+          </div>
+          <div style="margin-top:10px;">
+            <button class="btn-sm" onclick="openModal('calcModal')">Open calculator →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="app-footer">
+    <span>Internal reference tool — not a substitute for clinical judgement or AHA/ERC guidelines.</span>
+    <span>Base algorithm: UpToDate Graphic 117571 · Brugada · Vereckei aVR · Wellens</span>
+  </footer>
+</div>
+
+<!-- Calculator Modal -->
+<div class="modal-overlay" id="calcModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>ECG Measurement Calculator</h2>
+      <button class="close" onclick="closeModal('calcModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="text-muted">Enter the number of <strong>small squares</strong> (1 small square = 1 mm = 40 ms at standard 25 mm/s paper speed). The strip below redraws to scale as you type.</p>
+      <div class="calc-grid">
+        <div class="field"><label>RR interval (sq)</label><input type="number" id="calcRR" value="20" min="4" step="0.5" oninput="runCalculator()" /></div>
+        <div class="field"><label>QRS width (sq)</label><input type="number" id="calcQRS" value="2.5" min="0.5" step="0.5" oninput="runCalculator()" /></div>
+        <div class="field"><label>PR interval (sq)</label><input type="number" id="calcPR" value="4" min="1" step="0.5" oninput="runCalculator()" /></div>
+        <div class="field"><label>QT interval (sq)</label><input type="number" id="calcQT" value="10" min="2" step="0.5" oninput="runCalculator()" /></div>
+        <div class="field"><label>RP interval (sq)</label><input type="number" id="calcRP" value="6" min="1" step="0.5" oninput="runCalculator()" /></div>
+      </div>
+
+      <div class="calc-strip-wrap"><svg id="calcStripSvg" viewBox="0 0 620 130" xmlns="http://www.w3.org/2000/svg"></svg></div>
+
+      <div class="calc-results" id="calcResults">
+        <div class="result-item"><div class="rlabel">Heart rate</div><div class="rvalue" id="resHR">—</div><div class="runit">bpm</div></div>
+        <div class="result-item"><div class="rlabel">QRS width</div><div class="rvalue" id="resQRS">—</div><div class="runit">ms</div></div>
+        <div class="result-item"><div class="rlabel">PR interval</div><div class="rvalue" id="resPR">—</div><div class="runit">ms</div></div>
+        <div class="result-item"><div class="rlabel">RP interval</div><div class="rvalue" id="resRP">—</div><div class="runit">ms</div></div>
+        <div class="result-item"><div class="rlabel">QT interval</div><div class="rvalue" id="resQT">—</div><div class="runit">ms</div></div>
+        <div class="result-item"><div class="rlabel">QTc (Bazett)</div><div class="rvalue" id="resQTc">—</div><div class="runit">ms</div></div>
+      </div>
+      <div style="margin-top:10px;background:var(--paper);padding:10px 14px;border-radius:10px;font-size:12px;">
+        <strong>Reference:</strong> QRS &lt;120 ms (3 sq) normal · PR 120–200 ms (3–5 sq) normal · QTc &lt;440 ms (♂) / &lt;460 ms (♀) normal, &gt;500 ms high Torsades risk.
+      </div>
+      <div style="margin-top:8px;">
+        <button class="btn-sm" onclick="resetCalculator()">↺ Reset values</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Gallery Modal -->
+<div class="modal-overlay" id="galleryModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Example ECG Patterns</h2>
+      <button class="close" onclick="closeModal('galleryModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="text-muted">Generated schematic tracings illustrating the key diagnostic morphology for each pattern — drawn to scale on standard ECG paper, not real patient recordings. Use for pattern recognition alongside genuine 12-lead ECGs.</p>
+      <div class="ecg-gallery" id="ecgGallery"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Tree Modal -->
+<div class="modal-overlay" id="treeModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Algorithm Decision Tree</h2>
+      <button class="close" onclick="closeModal('treeModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="text-muted">Full pathway overview. Your active branch highlights as you work through the tool.</p>
+      <div class="tree-viz" id="treeViz"></div>
+      <div class="deploy-panel">
+        <h4>Deploying to GitHub Pages</h4>
+        <ol>
+          <li>Create a new repository (or reuse an existing one) on GitHub.</li>
+          <li>Upload this file, keeping the name <code>index.html</code> (or add it alongside your other tools and link to it).</li>
+          <li>Go to <strong>Settings → Pages</strong>, set source to your main branch, root folder.</li>
+          <li>Your tool will be live at <code>https://yourusername.github.io/reponame/</code> within a minute or two.</li>
+        </ol>
+        This file is fully self-contained (no build step, no external data calls) — it only reaches the internet once, to load the two Google Fonts. Everything else works offline once cached by the browser.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =========================================================
+   DECISION TREE STATE MACHINE
+   ========================================================= */
+const stateDefs = {
+  start: {
+    id:'start', question:'QRS Width',
+    subtext:'Measure the widest QRS complex in any lead. <strong>Narrow = &lt;120 ms</strong> (3 small squares). <strong>Wide = ≥120 ms</strong> (≥3 small squares).',
+    options:[
+      { label:'Narrow <120 ms', value:'narrow', next:'regularity', icon:'▭', desc:'3 small squares or less' },
+      { label:'Wide ≥120 ms', value:'wide', next:'regularity', icon:'▭▭', desc:'3+ small squares' }
+    ]
+  },
+  regularity: {
+    id:'regularity', question:'Regularity',
+    subtext:'Assess R–R interval consistency across the strip. Regular or irregular?',
+    options:[
+      { label:'Regular', value:'regular', next:'reg_branch', icon:'≡', desc:'Consistent R–R intervals' },
+      { label:'Irregular', value:'irregular', next:'irreg_branch', icon:'≈', desc:'Variable R–R intervals' }
+    ]
+  },
+  narrow_regular_p: {
+    id:'narrow_regular_p', question:'P-wave visibility',
+    subtext:'Look for P waves before each QRS, absent P waves, or retrograde P waves (negative in inferior leads II, III, aVF).',
+    options:[
+      { label:'P before every QRS', value:'p_before', next:'narrow_regular_rp', icon:'P', desc:'Upright P in II, III, aVF' },
+      { label:'No visible P waves', value:'p_none', next:'narrow_regular_no_p', icon:'∅', desc:'Buried in QRS or absent' },
+      { label:'Retrograde P (neg. inferior)', value:'p_retro', next:'narrow_regular_rp', icon:'P⁻', desc:'Negative P in II, III, aVF after QRS' }
+    ]
+  },
+  narrow_regular_rp: {
+    id:'narrow_regular_rp', question:'RP interval',
+    subtext:'Measure from QRS onset to the next P wave. <strong>Short RP &lt; PR</strong>; <strong>Long RP &gt; PR</strong>.',
+    options:[
+      { label:'Short RP (< PR)', value:'rp_short', next:'narrow_regular_short', icon:'⏱', desc:'RP typically <100 ms' },
+      { label:'Long RP (> PR)', value:'rp_long', next:'narrow_regular_long', icon:'⏱', desc:'RP > PR interval' }
+    ]
+  },
+  narrow_regular_no_p: {
+    id:'narrow_regular_no_p', question:'No P waves — differential',
+    subtext:'Absent P waves with narrow, regular QRS suggests AVNRT or junctional tachycardia.',
+    options:[
+      { label:'AVNRT (most common)', value:'avnrt', next:'term_avnrt', icon:'●', desc:'Typical: no visible P, rate 150–200' },
+      { label:'Junctional tachycardia', value:'junctional', next:'term_junctional', icon:'●', desc:'Accelerated junctional rhythm' }
+    ]
+  },
+  narrow_regular_short: {
+    id:'narrow_regular_short', question:'Short RP — differential',
+    subtext:'Short RP (< PR) suggests typical AVNRT, orthodromic AVRT, or junctional tachycardia.',
+    options:[
+      { label:'Typical AVNRT', value:'avnrt_typ', next:'term_avnrt', icon:'●', desc:'Most common SVT, no visible P' },
+      { label:'Orthodromic AVRT', value:'avrt_ortho', next:'term_avrt', icon:'⚡', desc:'Down AV node, up accessory pathway' },
+      { label:'Junctional tachycardia', value:'junctional2', next:'term_junctional', icon:'●', desc:'Accelerated AV junctional rhythm' }
+    ]
+  },
+  narrow_regular_long: {
+    id:'narrow_regular_long', question:'Long RP — differential',
+    subtext:'Long RP (> PR) suggests atrial tachycardia, atypical AVNRT, or PJRT.',
+    options:[
+      { label:'Atrial tachycardia', value:'atrial_tach', next:'term_atrial_tach', icon:'◆', desc:'Focal atrial origin, abnormal P morphology' },
+      { label:'Atypical AVNRT', value:'avnrt_atyp', next:'term_avnrt', icon:'●', desc:'Fast-slow or slow-slow pathway' },
+      { label:'PJRT', value:'pjrt', next:'term_pjrt', icon:'↻', desc:'Permanent junctional reciprocating tachycardia' }
+    ]
+  },
+  narrow_irregular: {
+    id:'narrow_irregular', question:'Flutter waves?',
+    subtext:'Look for saw-tooth flutter waves in leads II, III, aVF (atrial rate ~250–350 bpm).',
+    options:[
+      { label:'Saw-tooth flutter waves', value:'flutter', next:'term_flutter', icon:'〰', desc:'Regular atrial activity, variable block' },
+      { label:'No flutter waves', value:'no_flutter', next:'narrow_irregular_p', icon:'〰', desc:'Proceed to P-wave analysis' }
+    ]
+  },
+  narrow_irregular_p: {
+    id:'narrow_irregular_p', question:'Distinct P-wave morphology?',
+    subtext:'≥3 distinct P-wave morphologies suggest multifocal atrial tachycardia (MAT).',
+    options:[
+      { label:'≥3 distinct P morphologies', value:'mat', next:'term_mat', icon:'⋮', desc:'MAT — commonly in COPD, hypoxia' },
+      { label:'No distinct P waves', value:'af', next:'term_af', icon:'≈', desc:'Irregularly irregular, no organised atrial activity' }
+    ]
+  },
+  wide_regular: {
+    id:'wide_regular', question:'Brugada Step 1 — Concordance',
+    subtext:'Is there concordance (all precordial QRS complexes uniformly positive OR uniformly negative) across V1–V6?',
+    options:[
+      { label:'Yes — concordant', value:'brugada_concord', next:'term_vt', icon:'✓', desc:'All precordial leads same polarity → VT' },
+      { label:'No — continue', value:'brugada_no_concord', next:'wide_regular_b2', icon:'→', desc:'Proceed to Step 2' }
+    ]
+  },
+  wide_regular_b2: {
+    id:'wide_regular_b2', question:'Brugada Step 2 — RS interval',
+    subtext:'Is the RS interval (onset of R to nadir of S) &gt;100 ms in any precordial lead?',
+    options:[
+      { label:'Yes — RS >100 ms', value:'brugada_rs', next:'term_vt', icon:'✓', desc:'Any precordial lead → VT' },
+      { label:'No — continue', value:'brugada_no_rs', next:'wide_regular_b3', icon:'→', desc:'Proceed to Step 3' }
+    ]
+  },
+  wide_regular_b3: {
+    id:'wide_regular_b3', question:'Brugada Step 3 — AV dissociation',
+    subtext:'Is there AV dissociation — independent P waves marching through the strip, capture beats, or fusion beats?',
+    options:[
+      { label:'Yes — AV dissociation', value:'brugada_avd', next:'term_vt', icon:'✓', desc:'P waves dissociated from QRS → VT' },
+      { label:'No — continue', value:'brugada_no_avd', next:'wide_regular_b4', icon:'→', desc:'Proceed to Step 4' }
+    ]
+  },
+  wide_regular_b4: {
+    id:'wide_regular_b4', question:'Brugada Step 4 — Morphology criteria',
+    subtext:'Does QRS morphology in V1–V2 and V6 meet classic VT morphology criteria?',
+    options:[
+      { label:'Yes — VT morphology', value:'brugada_morph', next:'term_vt', icon:'✓', desc:'RBBB: R, QR, RS in V1; QS/QR/R in V6' },
+      { label:'No — consider SVT with aberrancy', value:'brugada_no_morph', next:'wide_regular_vereckei', icon:'→', desc:'Proceed to Vereckei aVR algorithm' }
+    ]
+  },
+  wide_regular_vereckei: {
+    id:'wide_regular_vereckei', question:'Vereckei aVR algorithm',
+    subtext:'Using lead aVR only, assess for any of the following in sequence.',
+    options:[
+      { label:'Initial R wave in aVR', value:'vereckei_r', next:'term_vt', icon:'✓', desc:'Dominant initial R in aVR → VT' },
+      { label:'Initial r or q >40 ms in aVR', value:'vereckei_rq', next:'term_vt', icon:'✓', desc:'Wide initial deflection → VT' },
+      { label:'Notching on initial downstroke', value:'vereckei_notch', next:'term_vt', icon:'✓', desc:'Notched QRS onset in aVR → VT' },
+      { label:'Vi/Vt ≤1', value:'vereckei_vi', next:'term_vt', icon:'✓', desc:'Slow initial vs terminal velocity → VT' },
+      { label:'None present', value:'vereckei_svt', next:'wide_regular_wellens', icon:'→', desc:'Proceed to Wellens criteria for final refinement' }
+    ]
+  },
+  wide_regular_wellens: {
+    id:'wide_regular_wellens', question:'Wellens criteria (V1/V6 morphology)',
+    subtext:'Not to be confused with "Wellens syndrome" (T-wave changes of proximal LAD ischemia) — this is Wellens\' separate 1978 morphology criteria for VT vs SVT with aberrancy, applied to whichever precordial pattern this complex resembles.',
+    visual:'wellens',
+    options:[
+      { label:'RBBB-like V1: monophasic R, qR, or taller left rabbit ear', value:'w_rbbb_vt', next:'term_vt', icon:'✓', desc:'VT-favouring RBBB pattern' },
+      { label:'RBBB-like V1: triphasic rSR\u2019, right rabbit ear taller + R/S>1 in V6', value:'w_rbbb_svt', next:'term_svt_aber', icon:'○', desc:'SVT-favouring RBBB pattern' },
+      { label:'LBBB-like V1: broad R >40ms, slurred S, or any Q in V6', value:'w_lbbb_vt', next:'term_vt', icon:'✓', desc:'VT-favouring LBBB pattern' },
+      { label:'LBBB-like V1: narrow fast initial R, clean fast S downstroke', value:'w_lbbb_svt', next:'term_svt_aber', icon:'○', desc:'SVT-favouring LBBB pattern' }
+    ]
+  },
+  wide_irregular: {
+    id:'wide_irregular', question:'Rate & morphology',
+    subtext:'Is the rate very fast (&gt;250 bpm), or is the morphology polymorphic (changing beat-to-beat)?',
+    options:[
+      { label:'Rate >250 bpm', value:'fast_irreg', next:'wide_irregular_fast', icon:'⚡', desc:'Pre-excited AF or polymorphic VT/VF' },
+      { label:'Polymorphic morphology', value:'poly', next:'wide_irregular_poly', icon:'⚡', desc:'Changing QRS axis/shape beat-to-beat' },
+      { label:'Monomorphic, rate <250', value:'mono_irreg', next:'wide_irregular_mono', icon:'●', desc:'Same QRS shape, irregular rate' }
+    ]
+  },
+  wide_irregular_fast: {
+    id:'wide_irregular_fast', question:'Fast >250 bpm — differential',
+    subtext:'Pre-excited AF (WPW) vs polymorphic VT / VF.',
+    options:[
+      { label:'Pre-excited AF (WPW)', value:'pre_excited_af', next:'term_pre_excited_af', icon:'⚠', desc:'Irregular, wide, delta waves — avoid AV blockers' },
+      { label:'Polymorphic VT / VF', value:'poly_vt_vf', next:'term_poly_vt', icon:'⚠', desc:'Usually unstable — prepare to defibrillate' }
+    ]
+  },
+  wide_irregular_poly: {
+    id:'wide_irregular_poly', question:'Polymorphic — QT assessment',
+    subtext:'Measure QTc on a preceding sinus beat if possible. Prolonged QTc suggests Torsades de pointes.',
+    options:[
+      { label:'QTc prolonged → Torsades', value:'torsades', next:'term_torsades', icon:'∿', desc:'QTc >500 ms, twisting QRS axis' },
+      { label:'QTc normal → ischemia / CPVT / VF', value:'poly_normal_qt', next:'term_poly_normal_qt', icon:'∿', desc:'Normal QT — consider ischemia or CPVT' }
+    ]
+  },
+  wide_irregular_mono: {
+    id:'wide_irregular_mono', question:'Monomorphic irregular — AF with aberrancy?',
+    subtext:'Consider AF with aberrant conduction, or frequent multifocal ectopy.',
+    options:[
+      { label:'AF with aberrancy', value:'af_aberrancy', next:'term_af_aber', icon:'≈', desc:'Irregularly irregular, wide QRS' },
+      { label:'Frequent ectopy / multifocal', value:'freq_ectopy', next:'term_freq_ectopy', icon:'⋮', desc:'Multiple PVC morphologies' }
+    ]
+  },
+
+  term_avnrt: { id:'term_avnrt', terminal:true, diagnosis:'AVNRT (AV Nodal Reentrant Tachycardia)', gallery:'avnrt',
+    management:'Assess stability first. Stable: vagal manoeuvres, then adenosine 6 mg IV rapid push, repeat 12 mg if needed. Unstable: synchronized cardioversion 50–100 J. If adenosine fails and patient remains stable, consider IV beta-blocker or calcium channel blocker for rate control.' },
+  term_avrt: { id:'term_avrt', terminal:true, diagnosis:'Orthodromic AVRT (WPW)', gallery:'avrt',
+    management:'Stable: vagal manoeuvres, then adenosine 6–12 mg IV. Unstable: synchronized cardioversion. Avoid AV nodal blockers if there is any suggestion of pre-excited AF. Refer for EP study and ablation if recurrent.' },
+  term_junctional: { id:'term_junctional', terminal:true, diagnosis:'Junctional Tachycardia',
+    management:'Rate control with beta-blockers or calcium channel blockers. Treat the underlying cause — digoxin toxicity, ischemia, post-cardiac-surgery state. Consider amiodarone if refractory.' },
+  term_atrial_tach: { id:'term_atrial_tach', terminal:true, diagnosis:'Focal Atrial Tachycardia',
+    management:'Rate control with beta-blockers or calcium channel blockers. Adenosine may transiently slow but rarely terminates it. Check for digoxin toxicity or electrolyte imbalance. Consider ablation if recurrent.' },
+  term_pjrt: { id:'term_pjrt', terminal:true, diagnosis:'PJRT (Permanent Junctional Reciprocating Tachycardia)',
+    management:'Adenosine may terminate transiently. Long-term control with beta-blockers, calcium channel blockers, or ablation. Often incessant — watch for tachycardia-induced cardiomyopathy.' },
+  term_flutter: { id:'term_flutter', terminal:true, diagnosis:'Atrial Flutter', gallery:'flutter',
+    management:'Rate control: beta-blockers, calcium channel blockers, or digoxin. Rhythm control: ibutilide, amiodarone, cardioversion, or ablation. Anticoagulate per the same criteria as AF if duration >48h or unknown. Typical atrial rate 250–350 bpm.' },
+  term_mat: { id:'term_mat', terminal:true, diagnosis:'Multifocal Atrial Tachycardia (MAT)',
+    management:'Treat the underlying trigger — COPD exacerbation, hypoxia, electrolyte derangement. Rate control with verapamil/diltiazem or beta-blockers. Avoid digoxin. Usually resolves once the trigger is corrected.' },
+  term_af: { id:'term_af', terminal:true, diagnosis:'Atrial Fibrillation',
+    management:'Rate control: beta-blockers, calcium channel blockers, or digoxin. Rhythm control: amiodarone, flecainide, or cardioversion. Anticoagulate per CHA₂DS₂-VASc. If duration >48h or unknown, use TEE-guided cardioversion or 3 weeks of anticoagulation first.' },
+  term_vt: { id:'term_vt', terminal:true, diagnosis:'Ventricular Tachycardia (VT)', gallery:'brugada',
+    management:'Stable: amiodarone 150 mg IV over 10 min, procainamide 15–17 mg/kg IV, or lidocaine 1–1.5 mg/kg IV. Unstable: synchronized cardioversion 100–200 J. Pulseless: defibrillate immediately. Avoid AV nodal blockers. Correct K⁺ and Mg²⁺.' },
+  term_svt_aber: { id:'term_svt_aber', terminal:true, diagnosis:'SVT with Aberrant Conduction',
+    management:'Treat the underlying SVT mechanism. Adenosine may terminate if AVNRT/AVRT. Rate control if the underlying rhythm is atrial flutter or fibrillation. If diagnosis remains uncertain and the patient is stable, procainamide is reasonable — it is safe in both VT and SVT. If unstable, synchronized cardioversion regardless of mechanism.' },
+  term_pre_excited_af: { id:'term_pre_excited_af', terminal:true, diagnosis:'Pre-excited AF (WPW) — CRITICAL', gallery:'preexcited',
+    management:'AVOID AV nodal blockers — adenosine, calcium channel blockers, digoxin, and beta-blockers can accelerate conduction down the accessory pathway and precipitate VF. Use procainamide 15–17 mg/kg IV or ibutilide 1 mg IV. Unstable: immediate cardioversion. Flecainide or amiodarone are reasonable alternatives.' },
+  term_poly_vt: { id:'term_poly_vt', terminal:true, diagnosis:'Polymorphic VT / VF',
+    management:'Unstable: immediate defibrillation (200 J biphasic). Stable: amiodarone 150 mg IV, or lidocaine. Correct K⁺ (>4.0) and Mg²⁺ (>2.0). Treat ischemia per ACS protocol. Consider ICD referral for survivors.' },
+  term_torsades: { id:'term_torsades', terminal:true, diagnosis:'Torsades de Pointes', gallery:'torsades',
+    management:'Magnesium sulfate 2 g IV bolus over 5–10 min, may repeat. Stop all QT-prolonging drugs. Correct K⁺ and Mg²⁺. Overdrive pacing or isoproterenol if bradycardia-dependent. Unstable: defibrillate.' },
+  term_poly_normal_qt: { id:'term_poly_normal_qt', terminal:true, diagnosis:'Polymorphic VT (Normal QT)',
+    management:'Treat ischemia per ACS protocol. Beta-blockers (esmolol, metoprolol). Consider CPVT if young and exercise-triggered. Avoid QT-prolonging drugs. ICD referral for recurrent cases.' },
+  term_af_aber: { id:'term_af_aber', terminal:true, diagnosis:'AF with Aberrant Conduction',
+    management:'Rate control with beta-blockers or calcium channel blockers. Anticoagulate per CHA₂DS₂-VASc. If pre-excitation (delta waves) is present, avoid AV nodal blockers entirely. Consider procainamide or ibutilide for rhythm control.' },
+  term_freq_ectopy: { id:'term_freq_ectopy', terminal:true, diagnosis:'Frequent Ectopy / Multifocal PVCs',
+    management:'Treat the underlying cause — ischemia, electrolyte derangement, hypoxia. Beta-blockers first line. Consider amiodarone if symptomatic. Holter monitoring and echo to rule out structural heart disease.' }
+};
+
+let currentState = 'start';
+let path = [];
+
+function getState(id){ return stateDefs[id]; }
+
+/* =========================================================
+   ECG DRAWING ENGINE
+   ========================================================= */
+const TRACE = '#B91C34';
+const TRACE_DARK = '#7A1223';
+const GRID_THIN = '#F7D3D0';
+const GRID_BOLD = '#EEA8A2';
+const TEAL = '#0F6B5C';
+
+function gridBG(w, h, sq){
+  sq = sq || 8;
+  let s = '<rect x="0" y="0" width="'+w+'" height="'+h+'" fill="#FFFDFC" rx="6"/>';
+  let n = 0;
+  for(let x = 0; x <= w; x += sq){
+    const bold = (n % 5 === 0);
+    s += '<line x1="'+x+'" y1="0" x2="'+x+'" y2="'+h+'" stroke="'+(bold?GRID_BOLD:GRID_THIN)+'" stroke-width="'+(bold?0.8:0.4)+'"/>';
+    n++;
+  }
+  n = 0;
+  for(let y = 0; y <= h; y += sq){
+    const bold = (n % 5 === 0);
+    s += '<line x1="0" y1="'+y+'" x2="'+w+'" y2="'+y+'" stroke="'+(bold?GRID_BOLD:GRID_THIN)+'" stroke-width="'+(bold?0.8:0.4)+'"/>';
+    n++;
+  }
+  return s;
+}
+
+/* Build one PQRST complex as an array of [x,y] points, relative to x0 / baseline */
+function beatPts(x0, base, o){
+  o = o || {};
+  const bw = (o.bw != null) ? o.bw : 44;
+  const hasP = o.hasP !== false;
+  const pInv = !!o.pInvert;
+  const pAmp = (o.pAmp != null) ? o.pAmp : 5;
+  const pX = (o.pX != null) ? o.pX : 9;
+  const qrsX = (o.qrsX != null) ? o.qrsX : 19;
+  const qAmp = (o.qAmp != null) ? o.qAmp : 3;
+  const rAmp = (o.rAmp != null) ? o.rAmp : 27;
+  const sAmp = (o.sAmp != null) ? o.sAmp : 9;
+  const qrsHalf = (o.qrsHalf != null) ? o.qrsHalf : 3;
+  const delta = !!o.delta;
+  const notch = !!o.notch;
+  const st = o.st || 0;
+  const tAmp = (o.tAmp != null) ? o.tAmp : 9;
+  const tInv = !!o.tInvert;
+  const noQRS = !!o.noQRS;
+  const fib = !!o.fib;
+
+  const pts = [];
+  const add = function(dx, dy){
+    let yy = base + dy;
+    if(fib){ yy += 1.6*Math.sin((x0+dx)*1.3) + 1.1*Math.sin((x0+dx)*2.9); }
+    pts.push([x0+dx, yy]);
+  };
+
+  add(0,0);
+  if(hasP){
+    add(pX-2.5, 0);
+    add(pX, pInv ? pAmp : -pAmp);
+    add(pX+2.5, 0);
+  }
+  add(qrsX, 0);
+  if(!noQRS){
+    if(delta){
+      add(qrsX+2, -rAmp*0.28);
+      add(qrsX+4.5, -rAmp*0.55);
+    } else {
+      add(qrsX+1, qAmp);
+    }
+    if(notch){
+      add(qrsX+qrsHalf-1, -rAmp*0.62);
+      add(qrsX+qrsHalf, -rAmp*0.38);
+      add(qrsX+qrsHalf+1.2, -rAmp);
+    } else {
+      add(qrsX+qrsHalf, -rAmp);
+    }
+    add(qrsX+qrsHalf*2, sAmp);
+    add(qrsX+qrsHalf*2+3, -st);
+  } else {
+    add(qrsX+qrsHalf*2+3, 0);
+  }
+  add(qrsX+qrsHalf*2+7, -st);
+  add(qrsX+qrsHalf*2+15, tInv ? tAmp : -tAmp);
+  add(qrsX+qrsHalf*2+22, 0);
+  add(bw, 0);
+  return pts;
+}
+
+function ptsToStr(arr){
+  return arr.map(function(p){ return p[0].toFixed(1)+','+p[1].toFixed(1); }).join(' ');
+}
+
+function stripStr(beats, base){
+  let all = [];
+  beats.forEach(function(b){ all = all.concat(beatPts(b.x0, base, b.o || {})); });
+  return ptsToStr(all);
+}
+
+function tracePath(pointsStr, color, width){
+  color = color || TRACE;
+  width = width || 2.2;
+  return '<polyline points="'+pointsStr+'" fill="none" stroke="'+color+'" stroke-width="'+width+'" stroke-linejoin="round" stroke-linecap="round"/>';
+}
+
+function textLbl(text, x, y, color, size){
+  color = color || '#5A6B78';
+  size = size || 9;
+  return '<text x="'+x+'" y="'+y+'" font-size="'+size+'" fill="'+color+'" font-family="Inter, sans-serif" font-weight="600">'+text+'</text>';
+}
+
+function highlightBox(x, y, w, h, color){
+  color = color || TEAL;
+  return '<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" fill="none" stroke="'+color+'" stroke-width="1.6" stroke-dasharray="3 2" rx="6"/>';
+}
+
+/* ---- Individual gallery diagnoses ---- */
+function drawAVNRT(){
+  const W = 300, H = 100, base = 55;
+  const beats = [0,42,84,126].map(function(x){ return {x0:x, o:{hasP:false, bw:42, rAmp:26}}; });
+  return gridBG(W,H,8) + tracePath(stripStr(beats, base)) +
+    textLbl('No visible P waves', 8, 16, TRACE_DARK) + textLbl('Regular, narrow QRS', 8, 92);
+}
+
+function drawAVRT(){
+  const W = 300, H = 100, base = 55;
+  const beats = [0,42,84,126].map(function(x){ return {x0:x, o:{hasP:false, bw:42, rAmp:26}}; });
+  let s = gridBG(W,H,8) + tracePath(stripStr(beats, base));
+  [0,42,84,126].forEach(function(x){
+    s += tracePath(x+26+',48 '+(x+29)+',40 '+(x+33)+',40 '+(x+36)+',48', TRACE_DARK, 1.8);
+  });
+  s += textLbl('Retrograde P (short RP)', 8, 16, TRACE_DARK) + textLbl('Regular, narrow QRS', 8, 92);
+  return s;
+}
+
+function drawFlutter(){
+  const W = 300, H = 100, base = 55;
+  let saw = [];
+  for(let x = 0; x <= W; x += 7){
+    const cyc = (x/7) % 2;
+    saw.push([x, base-14 + (cyc<1 ? -6*cyc : -6*(2-cyc))]);
+  }
+  let s = gridBG(W,H,8) + tracePath(ptsToStr(saw), '#E3AFA9', 1.6);
+  const beats = [10,52,94,136,178,220,262].map(function(x){ return {x0:x, o:{hasP:false, bw:34, rAmp:24, qrsHalf:2.5}}; });
+  s += tracePath(stripStr(beats, base));
+  s += textLbl('Saw-tooth flutter waves (II, III, aVF)', 8, 16, TRACE_DARK) + textLbl('~2:1 AV block shown', 8, 92);
+  return s;
+}
+
+function drawCaptureFusion(){
+  const W = 320, H = 100, base = 55;
+  const wide = {hasP:false, bw:46, rAmp:30, qrsHalf:7, sAmp:12, tInvert:true, tAmp:8};
+  let beats = [0,46,92,184,230,276].map(function(x){ return {x0:x, o:wide}; });
+  beats.splice(3,0,{x0:138, o:{hasP:false, bw:46, rAmp:22, qrsHalf:3, sAmp:6, tInvert:false, tAmp:8}});
+  let s = gridBG(W,H,8) + tracePath(stripStr(beats, base));
+  s += highlightBox(133,10,50,80,TEAL);
+  s += textLbl('Capture beat', 138, 16, TEAL);
+  s += textLbl('Regular wide-complex VT (background)', 8, 92);
+  return s;
+}
+
+function drawBrugada(){
+  const W = 300, H = 100, base = 55;
+  const beats = [0,60,120,180,240].map(function(x){ return {x0:x, o:{hasP:false, bw:60, rAmp:20, qrsHalf:5, notch:true, st:9, tInvert:true, tAmp:11}}; });
+  let s = gridBG(W,H,8) + tracePath(stripStr(beats, base));
+  s += textLbl('rSR\u2019 (RBBB) + coved ST elevation', 8, 16, TRACE_DARK) + textLbl('Descending, inverted T — V1/V2 (Type 1 Brugada)', 8, 92);
+  return s;
+}
+
+function drawTorsades(){
+  const W = 300, H = 100, base = 50;
+  const pts = [];
+  for(let i = 0; i <= 60; i++){
+    const x = 4 + i*4.9;
+    const phase = i/60*Math.PI*5;
+    const amp = 10 + 22*Math.abs(Math.sin(phase*0.6));
+    const y = base + amp*Math.sin(phase*2.1);
+    pts.push([x,y]);
+  }
+  return gridBG(W,H,8) + tracePath(ptsToStr(pts), TRACE_DARK, 2.4) +
+    textLbl('Twisting QRS axis around baseline', 8, 16, TRACE_DARK) + textLbl('Polymorphic VT, prolonged QT preceding', 8, 92);
+}
+
+function drawPreExcited(){
+  const W = 320, H = 100, base = 55;
+  const widths = [30,48,26,42,34,50,28];
+  let x = 0; const beats = [];
+  widths.forEach(function(w){ beats.push({x0:x, o:{hasP:false, bw:w, rAmp:28, delta:true, qrsHalf:5, fib:true}}); x += w; });
+  let s = gridBG(W,H,8) + tracePath(stripStr(beats, base));
+  s += textLbl('Irregularly irregular, wide QRS, delta waves', 8, 16, TRACE_DARK);
+  s += textLbl('AVOID AV-nodal blockers', 8, 92, '#A61B2B');
+  return s;
+}
+
+function drawSinusTach(){
+  const W = 320, H = 100, base = 55;
+  const beats = [0,34,68,102,136,170,204].map(function(x){ return {x0:x, o:{hasP:true, pInvert:false, bw:34, rAmp:24}}; });
+  let s = gridBG(W,H,8) + tracePath(stripStr(beats, base));
+  s += textLbl('P before every QRS, regular rhythm', 8, 16, TRACE_DARK);
+  s += textLbl('Sinus tachycardia — narrow QRS, ~170 bpm', 8, 92);
+  return s;
+}
+
+function drawAFib(){
+  const W = 320, H = 100, base = 55;
+  const widths = [36, 52, 40, 58, 34, 48, 44, 54, 38];
+  let x = 0;
+  const beats = widths.map(function(w){ const b = {x0:x, o:{hasP:false, bw:w, rAmp:24, fib:true}}; x += w; return b; });
+  let s = gridBG(W,H,8) + tracePath(stripStr(beats.filter(function(b){return b.x0 < W;}), base));
+  s += textLbl('Irregularly irregular, absent P waves', 8, 16, TRACE_DARK);
+  s += textLbl('Atrial fibrillation — fibrillatory baseline', 8, 92);
+  return s;
+}
+
+function drawMonomorphicVT(){
+  const W = 320, H = 100, base = 55;
+  const beats = [0,52,104,156,208].map(function(x){ return {x0:x, o:{hasP:false, bw:52, rAmp:28, qrsHalf:8, sAmp:14, tInvert:true, tAmp:9, notch:true}}; });
+  let s = gridBG(W,H,8) + tracePath(stripStr(beats, base), '#E54D4D', 2.2);
+  s += textLbl('Wide QRS, regular, AV dissociation', 8, 16, '#7A1223');
+  s += textLbl('Monomorphic ventricular tachycardia', 8, 92);
+  return s;
+}
+
+function drawVFib(){
+  const W = 320, H = 100, base = 55;
+  let pts = [];
+  for(let i = 0; i <= 80; i++){
+    const x = 4 + i * 3.8;
+    const y = base + (Math.sin(i*0.7)*12 + Math.sin(i*1.9)*8 + Math.sin(i*3.1)*5) * (0.5 + 0.5*Math.sin(i*0.15));
+    pts.push([x, y]);
+  }
+  let s = gridBG(W,H,8) + tracePath(ptsToStr(pts), '#E54D4D', 2.0);
+  s += textLbl('Chaotic, no organized QRS complexes', 8, 16, '#7A1223');
+  s += textLbl('Ventricular fibrillation — immediate defibrillation', 8, 92);
+  return s;
+}
+
+function renderGallery(){
+  const container = document.getElementById('ecgGallery');
+  const examples = [
+    {id:'avnrt', title:'AVNRT', desc:'Narrow QRS, regular, no visible P waves', svg:drawAVNRT},
+    {id:'avrt', title:'AVRT (orthodromic)', desc:'Narrow QRS, regular, retrograde (short-RP) P', svg:drawAVRT},
+    {id:'flutter', title:'Atrial Flutter', desc:'Saw-tooth atrial waves, ~2:1 block', svg:drawFlutter},
+    {id:'capture', title:'Capture / Fusion Beat', desc:'Narrow complex interrupting a wide-QRS VT run — confirms AV dissociation', svg:drawCaptureFusion},
+    {id:'brugada', title:'Brugada Criteria (V1)', desc:'RBBB pattern with coved ST elevation, inverted T', svg:drawBrugada},
+    {id:'torsades', title:'Torsades de Pointes', desc:'Polymorphic VT with twisting QRS axis', svg:drawTorsades},
+    {id:'preexcited', title:'Pre-excited AF (WPW)', desc:'Irregular, wide QRS, delta waves — high-risk pattern', svg:drawPreExcited},
+    {id:'sinus_tach', title:'Sinus Tachycardia', desc:'Regular, narrow QRS, P before every QRS, rate >100 bpm', svg:drawSinusTach},
+    {id:'afib', title:'Atrial Fibrillation', desc:'Irregularly irregular, absent P waves, fibrillatory baseline', svg:drawAFib},
+    {id:'mono_vt', title:'Monomorphic VT', desc:'Wide QRS, regular, no P waves, AV dissociation', svg:drawMonomorphicVT},
+    {id:'vfib', title:'Ventricular Fibrillation', desc:'Chaotic electrical activity, no organized QRS complexes', svg:drawVFib}
+  ];
+  container.innerHTML = examples.map(function(ex){
+    return '<div class="ecg-card"><svg viewBox="0 0 320 100" xmlns="http://www.w3.org/2000/svg">'+ex.svg()+'</svg>'+
+      '<div class="caption">'+ex.title+'<small>'+ex.desc+'</small></div></div>';
+  }).join('');
+}
+
+/* Wellens V1 morphology comparison — small static schematic icons */
+function wellensVisualHTML(){
+  const rbbbVT = gridBG(140,70,7) + tracePath('6,55 16,55 22,20 28,40 34,10 40,55 60,55', TRACE_DARK, 2.2) + textLbl('Monophasic R / taller left peak', 6, 14, TRACE_DARK, 8);
+  const rbbbSVT = gridBG(140,70,7) + tracePath('6,55 16,55 22,30 26,18 30,28 34,10 38,28 44,55 60,55', TEAL, 2.2) + textLbl('rSR\u2019, right peak taller', 6, 14, TEAL, 8);
+  const lbbbVT = gridBG(140,70,7) + tracePath('6,55 16,55 20,50 30,15 42,45 48,60 55,55 70,55', TRACE_DARK, 2.2) + textLbl('Broad R >40ms, slurred S', 6, 14, TRACE_DARK, 8);
+  const lbbbSVT = gridBG(140,70,7) + tracePath('6,55 16,55 20,52 26,18 34,58 40,55 55,55', TEAL, 2.2) + textLbl('Narrow fast R, clean fast S', 6, 14, TEAL, 8);
+  return '<div class="visual-compare">'+
+    '<div class="vc-box"><div class="vc-title">V1 — RBBB-like, VT-favouring</div><svg viewBox="0 0 140 70">'+rbbbVT+'</svg><div class="vc-cap">Monophasic R, qR, or <b>left</b> rabbit ear taller in V1.</div></div>'+
+    '<div class="vc-box"><div class="vc-title">V1 — RBBB-like, SVT-favouring</div><svg viewBox="0 0 140 70">'+rbbbSVT+'</svg><div class="vc-cap">Triphasic rSR\u2019, <b>right</b> rabbit ear taller, R/S&gt;1 in V6.</div></div>'+
+    '<div class="vc-box"><div class="vc-title">V1 — LBBB-like, VT-favouring</div><svg viewBox="0 0 140 70">'+lbbbVT+'</svg><div class="vc-cap">Broad initial R &gt;40 ms, slurred/notched S, any Q in V6.</div></div>'+
+    '<div class="vc-box"><div class="vc-title">V1 — LBBB-like, SVT-favouring</div><svg viewBox="0 0 140 70">'+lbbbSVT+'</svg><div class="vc-cap">Narrow fast initial R, clean fast S downstroke, no Q in V6.</div></div>'+
+    '</div>';
+}
+
+/* ---- Monitor header animated strip — reflects the live decision path ---- */
+function getMonitorParams(){
+  const startChoice = path.find(function(p){ return p.state === 'start'; });
+  const regChoice = path.find(function(p){ return p.state === 'regularity'; });
+  const wide = startChoice ? startChoice.choice.indexOf('Wide') !== -1 : false;
+  let regular = regChoice ? (regChoice.choice === 'Regular') : true;
+  let hasP = true, pInvert = false, delta = false, notch = false, fib = false, torsades = false, color = '#8FE3C7';
+
+  const pChoice = path.find(function(p){ return p.state === 'narrow_regular_p'; });
+  if(pChoice){
+    if(pChoice.choice.indexOf('No visible') !== -1){ hasP = false; }
+    else if(pChoice.choice.indexOf('Retrograde') !== -1){ hasP = true; pInvert = true; }
+  }
+  const flutterChoice = path.find(function(p){ return p.state === 'narrow_irregular'; });
+  if(flutterChoice && flutterChoice.choice.indexOf('Saw-tooth') !== -1){ hasP = false; fib = false; }
+
+  const state = getState(currentState);
+  if(state && state.terminal){
+    const dx = state.diagnosis;
+    if(dx.indexOf('Fibrillation') !== -1 || dx.indexOf('Aberrant') !== -1){ hasP = false; fib = true; regular = false; }
+    if(dx.indexOf('Flutter') !== -1){ hasP = false; regular = false; }
+    if(dx.indexOf('MAT') !== -1 || dx.indexOf('Multifocal') !== -1){ hasP = true; regular = false; }
+    if(dx.indexOf('Ventricular') !== -1 || (dx.indexOf('VT') !== -1 && dx.indexOf('Poly') === -1)){ notch = true; hasP = false; color = '#FF6B6B'; }
+    if(dx.indexOf('Torsades') !== -1 || dx.indexOf('Polymorphic') !== -1){ torsades = true; color = '#FF6B6B'; }
+    if(dx.indexOf('re-excited') !== -1){ delta = true; hasP = false; fib = true; regular = false; color = '#FFB020'; }
+    if(dx.indexOf('Aberrant Conduction') !== -1){ notch = false; }
+  }
+  return { wide:wide, regular:regular, hasP:hasP, pInvert:pInvert, delta:delta, notch:notch, fib:fib, torsades:torsades, color:color };
+}
+
+function buildMonitorSVG(params){
+  params = params || {};
+  const W = 600, H = 56, base = 30;
+  let inner = '<rect x="0" y="0" width="'+W+'" height="'+H+'" fill="#0B121D"/>';
+
+  if(params.torsades){
+    const pts = [];
+    for(let i = 0; i <= 34; i++){
+      const x = 4 + i*17.6;
+      const phase = i/34*Math.PI*5;
+      const amp = 6 + 13*Math.abs(Math.sin(phase*0.6));
+      const y = base + amp*Math.sin(phase*2.1);
+      pts.push([x,y]);
+    }
+    inner += tracePath(ptsToStr(pts), params.color, 1.8);
+    return '<svg viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">'+inner+'</svg>';
+  }
+
+  const baseBw = params.wide ? 62 : 46;
+  const widths = params.regular ? [baseBw,baseBw,baseBw,baseBw,baseBw,baseBw,baseBw,baseBw]
+                                 : [baseBw*0.7,baseBw*1.25,baseBw*0.85,baseBw*1.15,baseBw*0.65,baseBw*1.3,baseBw*0.9,baseBw*1.1];
+  let x = 0; const beats = [];
+  widths.forEach(function(w){
+    beats.push({ x0:x, o:{
+      hasP: params.hasP, pInvert: params.pInvert, bw: w,
+      rAmp: params.wide ? 20 : 17, qrsHalf: params.wide ? 6.5 : 3,
+      pAmp: 3, tAmp: params.wide ? 7 : 6,
+      delta: params.delta, notch: params.notch, fib: params.fib
+    }});
+    x += w;
+    if(x > W + 60) return;
+  });
+  inner += tracePath(stripStr(beats.filter(function(b){ return b.x0 < W + 60; }), base), params.color, 1.8);
+  return '<svg viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">'+inner+'</svg>';
+}
+
+function renderMonitor(){
+  const el = document.getElementById('monitorStrip');
+  const params = getMonitorParams();
+  const svg = buildMonitorSVG(params);
+  el.innerHTML = '<div class="sweep">'+svg+svg+'</div>';
+}
+
+/* =========================================================
+   LIVE CALCULATOR STRIP
+   ========================================================= */
+function drawCalcStrip(rr, qrsSq, prSq, qtSq, rpSq){
+  const SQ = 12;
+  const W = 620, H = 130, base = 55;
+  const p1x = 40;
+  const qrsOnset1 = p1x + prSq*SQ;
+  const qrsEnd1 = qrsOnset1 + qrsSq*SQ;
+  const tEnd1 = qrsOnset1 + qtSq*SQ;
+  const p2x = p1x + rr*SQ;
+  const qrsOnset2 = p2x + prSq*SQ;
+  const qrsEnd2 = qrsOnset2 + qrsSq*SQ;
+  const tEnd2 = qrsOnset2 + qtSq*SQ;
+  const rpEndX = qrsEnd1 + rpSq*SQ;
+
+  function beat(qrsOnsetAbs, pAbs){
+    const qrsHalf = Math.max(1.5, (qrsSq*SQ)/2);
+    const o = { hasP:true, pX:(pAbs - (qrsOnsetAbs-19)), qrsX:19, qrsHalf:qrsHalf, rAmp:30, sAmp:9, tAmp:10, bw: (qrsSq*SQ) + 44 };
+    return beatPts(qrsOnsetAbs-19, base, o);
+  }
+
+  let s = gridBG(W,H,SQ);
+  const b1 = beat(qrsOnset1, p1x);
+  const b2 = beat(qrsOnset2, p2x);
+  s += tracePath(ptsToStr(b1));
+  s += tracePath(ptsToStr(b2));
+
+  function bracket(x1, x2, y, label, color){
+    color = color || '#5A6B78';
+    return '<line x1="'+x1+'" y1="'+y+'" x2="'+x2+'" y2="'+y+'" stroke="'+color+'" stroke-width="1.3"/>'+
+      '<line x1="'+x1+'" y1="'+(y-4)+'" x2="'+x1+'" y2="'+(y+4)+'" stroke="'+color+'" stroke-width="1.3"/>'+
+      '<line x1="'+x2+'" y1="'+(y-4)+'" x2="'+x2+'" y2="'+(y+4)+'" stroke="'+color+'" stroke-width="1.3"/>'+
+      '<text x="'+((x1+x2)/2)+'" y="'+(y-6)+'" font-size="9" text-anchor="middle" fill="'+color+'" font-family="IBM Plex Mono, monospace" font-weight="600">'+label+'</text>';
+  }
+
+  s += bracket(p1x, qrsOnset1, 108, 'PR', TRACE_DARK);
+  s += bracket(qrsOnset1, qrsEnd1, 118, 'QRS', TEAL);
+  s += bracket(qrsOnset1, tEnd1, 128, 'QT', '#8A5B00');
+  s += bracket(qrsEnd1, rpEndX, 18, 'RP', TRACE_DARK);
+
+  return '<svg viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg">'+s+'</svg>';
+}
+
+/* =========================================================
+   RENDER / NAVIGATION
+   ========================================================= */
+function render(){
+  const state = getState(currentState);
+  const card = document.getElementById('decisionCard');
+  if(!state){ card.innerHTML = '<div style="color:#A61B2B;">Error: state not found</div>'; return; }
+  renderMonitor();
+
+  if(state.terminal){
+    const mgmtItems = state.management.split('. ').filter(function(s){ return s.trim(); }).map(function(s){
+      let t = s.trim(); if(!t.endsWith('.')) t += '.'; return '<li>'+t+'</li>';
+    }).join('');
+    const isCritical = state.diagnosis.indexOf('CRITICAL') !== -1;
+    const warnClass = isCritical ? 'danger' : 'warn';
+
+    let galleryBtn = '';
+    if(state.gallery){ galleryBtn = '<button class="btn-sm" onclick="openModal(\'galleryModal\')">View example ECG</button>'; }
+
+    card.innerHTML =
+      '<div class="terminal">'+
+        '<div class="diagnosis">Diagnosis: <span class="highlight">'+state.diagnosis+'</span></div>'+
+        '<div class="management">'+
+          '<div class="mgmt-box"><h4>Management</h4><ul>'+mgmtItems+'</ul></div>'+
+          '<div class="mgmt-box '+warnClass+'"><h4>'+(isCritical?'Critical warning':'Key warnings')+'</h4><ul>'+
+            '<li>Assess hemodynamic stability first.</li>'+
+            '<li>Unstable → immediate synchronized cardioversion / defibrillation.</li>'+
+            '<li>Avoid AV nodal blockers in pre-excited AF (WPW).</li>'+
+            '<li>Check K⁺ and Mg²⁺ in every wide-complex tachycardia.</li>'+
+            '<li>Confirm against AHA/ERC guidelines and local protocol.</li>'+
+          '</ul></div>'+
+        '</div>'+
+        '<div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;">'+
+          '<button class="btn-sm primary" onclick="resetAlgorithm()">Start over</button>'+
+          '<button class="btn-sm" onclick="openModal(\'calcModal\')">Calculator</button>'+
+          galleryBtn+
+        '</div>'+
+      '</div>';
+    updatePath(true);
+    updateMeasurements(state.diagnosis);
+    return;
+  }
+
+  const optionsHtml = state.options.map(function(opt){
+    return '<button class="opt-btn" onclick="selectOption(\''+state.id+'\',\''+opt.value+'\',\''+opt.next+'\')">'+
+      '<span class="icon">'+(opt.icon||'•')+'</span>'+
+      '<span>'+opt.label+'<span class="desc">'+(opt.desc||'')+'</span></span>'+
+      '</button>';
+  }).join('');
+
+  const visualHtml = (state.visual === 'wellens') ? wellensVisualHTML() : '';
+
+  card.innerHTML =
+    '<div class="question"><span>'+state.question+'</span><span class="badge">Step '+(path.length+1)+'</span></div>'+
+    '<div class="subtext">'+state.subtext+'</div>'+
+    visualHtml+
+    '<div class="options-grid">'+optionsHtml+'</div>'+
+    '<div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:14px;">'+
+      '<button class="btn-sm" onclick="resetAlgorithm()">Restart</button>'+
+      '<button class="btn-sm" onclick="openModal(\'calcModal\')">Calculator</button>'+
+      '<button class="btn-sm" onclick="openModal(\'galleryModal\')">Examples</button>'+
+    '</div>';
+  updatePath(false);
+  updateMeasurements(null);
+}
+
+function selectOption(stateId, value, nextId){
+  const state = getState(stateId);
+  const opt = state.options.find(function(o){ return o.value === value; });
+  path.push({ state:stateId, choice: opt ? opt.label : value });
+  let nextState = nextId;
+
+  if(nextId === 'reg_branch' || stateId === 'regularity'){
+    const qrsState = path.find(function(p){ return p.state === 'start'; });
+    const isNarrow = qrsState && qrsState.choice.indexOf('Narrow') !== -1;
+    if(stateId === 'regularity'){
+      if(isNarrow){ nextState = (value === 'regular') ? 'narrow_regular_p' : 'narrow_irregular'; }
+      else { nextState = (value === 'regular') ? 'wide_regular' : 'wide_irregular'; }
+    }
+  }
+  if(nextId === 'irreg_branch'){
+    const qrsState = path.find(function(p){ return p.state === 'start'; });
+    const isNarrow = qrsState && qrsState.choice.indexOf('Narrow') !== -1;
+    nextState = isNarrow ? 'narrow_irregular' : 'wide_irregular';
+  }
+
+  currentState = nextState;
+  render();
+}
+
+function updatePath(terminal){
+  const p1 = document.getElementById('pathVal1');
+  const p2 = document.getElementById('pathVal2');
+  const p3 = document.getElementById('pathVal3');
+  const p4 = document.getElementById('pathVal4');
+  const s3 = document.getElementById('pathStep3');
+  const s4 = document.getElementById('pathStep4');
+  const a4 = document.getElementById('pathArrow4');
+
+  const startChoice = path.find(function(p){ return p.state === 'start'; });
+  const regChoice = path.find(function(p){ return p.state === 'regularity'; });
+  p1.textContent = startChoice ? startChoice.choice : '—';
+  p2.textContent = regChoice ? regChoice.choice : '—';
+
+  const otherSteps = path.filter(function(p){ return p.state !== 'start' && p.state !== 'regularity'; });
+  p3.textContent = otherSteps.length >= 1 ? otherSteps[0].choice : '—';
+  if(otherSteps.length >= 2){
+    p4.textContent = otherSteps[otherSteps.length-1].choice;
+    s4.style.display = 'flex'; a4.style.display = 'inline';
+  } else {
+    p4.textContent = '—'; s4.style.display = 'none'; a4.style.display = 'none';
+  }
+  s3.style.display = 'flex';
+}
+
+function resetAlgorithm(){
+  currentState = 'start';
+  path = [];
+  render();
+  ['measHR','measQRS','measPR','measRP','measP','measAxis','measQTc','measAV'].forEach(function(id){
+    document.getElementById(id).textContent = '—';
+  });
+}
+
+function runCalculator(){
+  const rr = parseFloat(document.getElementById('calcRR').value) || 20;
+  const qrs = parseFloat(document.getElementById('calcQRS').value) || 2.5;
+  const pr = parseFloat(document.getElementById('calcPR').value) || 4;
+  const qt = parseFloat(document.getElementById('calcQT').value) || 10;
+  const rp = parseFloat(document.getElementById('calcRP').value) || 6;
+
+  const msPerSmall = 40;
+  const hr = 1500 / rr;
+  const qrsMs = qrs * msPerSmall;
+  const prMs = pr * msPerSmall;
+  const rpMs = rp * msPerSmall;
+  const qtMs = qt * msPerSmall;
+  const rrSec = rr * msPerSmall / 1000;
+  const qtc = rrSec > 0 ? qtMs / Math.sqrt(rrSec) : 0;
+
+  document.getElementById('resHR').textContent = hr.toFixed(0);
+  document.getElementById('resQRS').textContent = qrsMs.toFixed(0);
+  document.getElementById('resPR').textContent = prMs.toFixed(0);
+  document.getElementById('resRP').textContent = rpMs.toFixed(0);
+  document.getElementById('resQT').textContent = qtMs.toFixed(0);
+  document.getElementById('resQTc').textContent = qtc.toFixed(0);
+
+  document.getElementById('measHR').textContent = hr.toFixed(0)+' bpm';
+  document.getElementById('measQRS').textContent = qrsMs.toFixed(0)+' ms'+(qrsMs>=120?' (wide)':' (narrow)');
+  document.getElementById('measPR').textContent = prMs.toFixed(0)+' ms';
+  document.getElementById('measRP').textContent = rpMs.toFixed(0)+' ms';
+  document.getElementById('measQTc').textContent = qtc.toFixed(0)+' ms'+(qtc>=500?' (high risk)':'');
+
+  document.getElementById('calcStripSvg').outerHTML = drawCalcStrip(rr, qrs, pr, qt, rp).replace('<svg', '<svg id="calcStripSvg"');
+}
+
+function resetCalculator(){
+  document.getElementById('calcRR').value = 20;
+  document.getElementById('calcQRS').value = 2.5;
+  document.getElementById('calcPR').value = 4;
+  document.getElementById('calcQT').value = 10;
+  document.getElementById('calcRP').value = 6;
+  runCalculator();
+}
+
+function updateMeasurements(diagnosis){
+  const map = {
+    'AVNRT': { p:'Absent / retrograde', av:'1:1' },
+    'Orthodromic AVRT (WPW)': { p:'Retrograde (short RP)', av:'1:1' },
+    'Atrial Flutter': { p:'Saw-tooth', av:'2:1 / 4:1' },
+    'Atrial Fibrillation': { p:'None (fibrillatory)', av:'Variable' },
+    'AF with Aberrant Conduction': { p:'None (fibrillatory)', av:'Variable' },
+    'Ventricular Tachycardia (VT)': { p:'AV dissociated', av:'Dissociated' },
+    'Pre-excited AF (WPW) — CRITICAL': { p:'None + delta waves', av:'Variable / pre-excited' },
+    'Torsades de Pointes': { p:'Polymorphic', av:'Variable' }
+  };
+  if(diagnosis && map[diagnosis]){
+    document.getElementById('measP').textContent = map[diagnosis].p;
+    document.getElementById('measAV').textContent = map[diagnosis].av;
+  }
+}
+
+function openModal(id){
+  document.getElementById(id).classList.add('active');
+  if(id === 'calcModal'){ runCalculator(); }
+  if(id === 'galleryModal'){ renderGallery(); }
+  if(id === 'treeModal'){ renderTree(); }
+}
+function closeModal(id){ document.getElementById(id).classList.remove('active'); }
+
+document.querySelectorAll('.modal-overlay').forEach(function(el){
+  el.addEventListener('click', function(e){ if(e.target === this){ this.classList.remove('active'); } });
+});
+
+function renderTree(){
+  const container = document.getElementById('treeViz');
+  container.innerHTML =
+    '<div><span class="tree-node '+(currentState==='start'?'active':'')+'">QRS Width</span></div>'+
+    '<div style="padding-left:20px;">'+
+      '<span class="tree-node '+(currentState==='regularity'?'active':'')+'">Regularity</span>'+
+      '<div style="padding-left:20px;">'+
+        '<span class="tree-node">Narrow Regular</span> → <span class="tree-node">P-wave</span> → <span class="tree-node">RP interval</span> → <span class="tree-node">Diagnosis</span>'+
+      '</div>'+
+      '<div style="padding-left:20px;">'+
+        '<span class="tree-node">Narrow Irregular</span> → <span class="tree-node">Flutter?</span> → <span class="tree-node">P morphology</span> → <span class="tree-node">Diagnosis</span>'+
+      '</div>'+
+      '<div style="padding-left:20px;">'+
+        '<span class="tree-node">Wide Regular</span> → <span class="tree-node">Brugada (4-step)</span> → <span class="tree-node">Vereckei aVR</span> → <span class="tree-node">Wellens (V1/V6)</span> → <span class="tree-node">Diagnosis</span>'+
+      '</div>'+
+      '<div style="padding-left:20px;">'+
+        '<span class="tree-node">Wide Irregular</span> → <span class="tree-node">Rate / morphology</span> → <span class="tree-node">QT assessment</span> → <span class="tree-node">Diagnosis</span>'+
+      '</div>'+
+    '</div>';
+}
+
+function togglePanel(el){
+  const content = el.parentElement.querySelector('.panel-content');
+  const toggle = el.querySelector('.toggle');
+  if(content.style.display === 'none'){ content.style.display = 'block'; toggle.textContent = '▼'; }
+  else { content.style.display = 'none'; toggle.textContent = '▶'; }
+}
+
+document.addEventListener('DOMContentLoaded', function(){
+  renderMonitor();
+  resetAlgorithm();
+});
+
+document.addEventListener('keydown', function(e){
+  if(e.key === 'Escape'){ document.querySelectorAll('.modal-overlay.active').forEach(function(el){ el.classList.remove('active'); }); }
+  if(e.key === 'r' && !e.ctrlKey && !e.metaKey){
+    if(!document.querySelector('.modal-overlay.active')){ resetAlgorithm(); }
+  }
+});
+
+/* ---- Print / Export System ---- */
+var PRINT_MARGINS = {top:65, left:12, right:12, bottom:12};
+function togglePrintPanel(){
+  var p = document.getElementById('printPanel');
+  if(p) p.style.display = (p.style.display==='none'||!p.style.display) ? 'block' : 'none';
+}
+function updatePrintMargin(side, v){
+  var n = parseFloat(v);
+  if(!isNaN(n) && n>=0 && n<=80) PRINT_MARGINS[side] = n;
+}
+function getFilledData(){
+  var data = {};
+  var pathSteps = document.querySelectorAll('.path-bar .step');
+  pathSteps.forEach(function(step){
+    var label = step.querySelector('.label');
+    var value = step.querySelector('.value');
+    if(label && value && value.textContent && value.textContent !== '—'){
+      data[label.textContent] = value.textContent;
+    }
+  });
+  return data;
+}
+function generatePrintHTML(){
+  var data = getFilledData();
+  var m = PRINT_MARGINS;
+  var now = new Date().toLocaleString();
+  var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>ECG Algorithm Result</title>';
+  html += '<style>@page{margin:'+m.top+'mm '+m.right+'mm '+m.bottom+'mm '+m.left+'mm;}';
+  html += '*{box-sizing:border-box;}body{font-family:Arial,sans-serif;font-size:10pt;line-height:1.4;color:#151515;margin:0;padding:0;}';
+  html += '.hdr{border-bottom:2px solid #B91C34;padding-bottom:6px;margin:0 0 10px;}.hdr h1{font-size:14pt;margin:0 0 2px;color:#101826;}';
+  html += '.hdr .meta{font-size:8.5pt;color:#555;}';
+  html += '.section{margin-bottom:12px;}.section h3{font-size:10pt;text-transform:uppercase;letter-spacing:.4px;color:#7A1223;margin:0 0 4px;border-bottom:1px solid #e2e2e2;padding-bottom:3px;}';
+  html += '.kv{display:flex;flex-wrap:wrap;gap:4px 14px;}.kv span{font-size:10pt;}.kv b{color:#333;}';
+  html += '.note{font-size:9pt;color:#666;margin-top:8px;}</style></head><body>';
+  html += '<div class="hdr"><h1>ED Tachycardia Algorithm — Decision Path</h1><div class="meta">Generated '+now+' &middot; ECG Decision Support</div></div>';
+  html += '<div class="section"><h3>Algorithm Path</h3><div class="kv">';
+  for(var k in data){ html += '<span><b>'+k+':</b> '+data[k]+'</span>'; }
+  if(Object.keys(data).length === 0) html += '<span>No algorithm path recorded yet.</span>';
+  html += '</div></div>';
+  html += '<div class="note">This is a clinical reference tool. Verify all decisions against institutional protocol.</div>';
+  html += '</body></html>';
+  return html;
+}
+function doPrint(){
+  var html = generatePrintHTML();
+  var w = window.open('', '_blank');
+  if(!w){ alert('Pop-up blocked — allow pop-ups to print'); return; }
+  w.document.open(); w.document.write(html); w.document.close();
+  w.onload = function(){ w.focus(); w.print(); };
+  setTimeout(function(){ try{ w.focus(); w.print(); }catch(e){} }, 350);
+}
+function exportWord(){
+  if(typeof DocxLite === 'undefined'){
+    alert('Word export library is still loading — try again in a moment.');
+    return;
+  }
+  var m = PRINT_MARGINS;
+  var container = document.createElement('div');
+  container.innerHTML = generatePrintHTML().replace(/<!DOCTYPE[^>]*>/i,'').replace(/<\/?(html|head|body|meta|title|style)[^>]*>/gi,'');
+  var fname = 'ECG_Algorithm_' + new Date().toISOString().slice(0,10);
+  DocxLite.exportRealDocx(container, m.top, m.left, fname, function(ok){
+    if(!ok) alert('Word export failed — check your internet connection and try again.');
+  });
+}
+</script>
+
+<!-- Print Toolbar -->
+<div id="printPanel" style="display:none;position:fixed;bottom:60px;left:10px;right:10px;background:#fff;border:1px solid #E2E8ED;border-radius:12px;padding:14px;box-shadow:0 -4px 16px rgba(0,0,0,.15);z-index:65;max-width:400px;">
+  <div style="font-size:13px;font-weight:700;color:#101826;margin-bottom:10px;">Print Margins (mm) — for hospital letterhead</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+    <label style="font-size:11px;color:#4B5A6B;font-weight:600;">Top<input type="number" min="0" max="80" step="0.5" value="65" oninput="updatePrintMargin('top',this.value)" style="width:100%;margin-top:3px;padding:7px 8px;border:1px solid #E2E8ED;border-radius:6px;font-size:16px;"></label>
+    <label style="font-size:11px;color:#4B5A6B;font-weight:600;">Left<input type="number" min="0" max="80" step="0.5" value="12" oninput="updatePrintMargin('left',this.value)" style="width:100%;margin-top:3px;padding:7px 8px;border:1px solid #E2E8ED;border-radius:6px;font-size:16px;"></label>
+    <label style="font-size:11px;color:#4B5A6B;font-weight:600;">Right<input type="number" min="0" max="80" step="0.5" value="12" oninput="updatePrintMargin('right',this.value)" style="width:100%;margin-top:3px;padding:7px 8px;border:1px solid #E2E8ED;border-radius:6px;font-size:16px;"></label>
+    <label style="font-size:11px;color:#4B5A6B;font-weight:600;">Bottom<input type="number" min="0" max="80" step="0.5" value="12" oninput="updatePrintMargin('bottom',this.value)" style="width:100%;margin-top:3px;padding:7px 8px;border:1px solid #E2E8ED;border-radius:6px;font-size:16px;"></label>
+  </div>
+  <div style="font-size:11px;color:#4B5A6B;line-height:1.4;margin-bottom:8px;">Set <b>Top</b> to ~65mm (2.5in) to clear hospital letterhead header.</div>
+  <button onclick="togglePrintPanel()" style="background:#0F6B5C;color:#fff;border:none;padding:9px 16px;border-radius:7px;font-weight:700;font-size:13px;cursor:pointer;">Done</button>
+</div>
+<div style="position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #E2E8ED;padding:10px 16px;display:flex;gap:8px;justify-content:center;z-index:60;max-width:1200px;margin:0 auto;">
+  <button onclick="togglePrintPanel()" style="background:#f0f4f2;color:#101826;border:1px solid #E2E8ED;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;" title="Print margins">⚙️ Margins</button>
+  <button onclick="doPrint()" style="background:#0F6B5C;color:#fff;border:none;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">🖨️ Print / PDF</button>
+  <button onclick="exportWord()" style="background:#f0f4f2;color:#101826;border:1px solid #E2E8ED;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">📄 Word</button>
+</div>
+</body>
+</html>
