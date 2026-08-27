@@ -202,7 +202,8 @@ const TABS = [
   {id:'bundle', label:'10 · Care Bundle'},
   {id:'traject',label:'11 · Trajectory'},              // NEW
   {id:'sbar',   label:'12 · Handover'},
-  {id:'sign',   label:'13 · Signatures'}
+  {id:'reassess',label:'13 · Reassessments'},
+  {id:'sign',   label:'14 · Signatures'}
 ];
 
 /* ---------------- UTILITIES ---------------- */
@@ -584,8 +585,16 @@ function sec_orders(){ return `
     <div class="field"><label>Target RASS</label><select id="ord_rass_target"><option value="0">0 Alert/calm</option><option value="-1">-1 Drowsy</option><option value="-2">-2 Light sedation</option><option value="-3">-3 Moderate</option><option value="-4">-4 Deep</option><option value="-5">-5 Unrousable</option></select></div></div>
     <div class="subhead">Renal / Nutrition / VTE</div>
     <div class="row"><div class="field"><label>RRT indication</label><input type="text" id="ord_rrt" placeholder="e.g. AKI stage 3, refractory acidosis"></div>
-    <div class="field"><label>Nutrition plan</label>${chipGroup('nutri',['Enteral within 24‑48h','TPN','NPO pending reassessment'])}</div></div>
+    <div class="field"><label>Nutrition plan</label>${chipGroup('nutri',['Enteral within 24‑48h','TPN','NPO pending reassessment'])}</div>
+    <div class="row"><div class="field"><label>Nutrition route</label>${chipGroup('nutri_route',['NGT','OGT','Oral','PEG','Jejunal','IV/TPN'])}</div>
+    <div class="field"><label>Nutrition risk</label>${chipGroup('nutri_risk',['Low – standard','Moderate – dietitian review','High – early aggressive feeding','Not assessed'])}</div></div>
+    <div class="field"><label>Nutrition notes</label><input type="text" id="nutri_notes" placeholder="e.g. target 25 kcal/kg/day, protein 1.5g/kg"></div>
+  </div>
+  <div class="card"><h2><span class="idx">R2</span> VTE Prophylaxis Assessment</h2>
     <div class="row"><div class="field"><label>VTE prophylaxis</label>${chipGroup('vtemethod',['LMWH','UFH','Mechanical (SCDs)','None – contraindicated'])}</div>
+    <div class="field"><label>Platelet count</label>${chipGroup('vte_plt',['>50k – LMWH safe','25–50k – consider UFH','<25k – mechanical only','Not checked'])}</div></div>
+    <div class="row"><div class="field"><label>Bleeding risk</label>${chipGroup('vte_bleed',['Low – standard ppx','Moderate – weigh risk/benefit','High – mechanical ppx only','Active bleeding – no ppx'])}</div>
+    <div class="field"><label>VTE contraindication / reason if not given</label><input type="text" id="vte_reason" placeholder="e.g. post-op day 0, ICH, platelets 18k"></div></div>
     <div class="field"><label>Glycemic target</label><input type="text" id="pl_glucose" value="7.8–10.0 mmol/L (140–180 mg/dL)"></div></div>
   </div>
   <div class="card"><h2><span class="idx">S</span> Conditional Escalation Orders</h2>
@@ -740,6 +749,83 @@ function sec_traject(){
     </div>
     <div class="field" style="margin-top:8px;"><label>Clinician override / comment</label><textarea id="traject_comment"></textarea></div>
   </div>`; }
+
+/* ---------------- REASSESSMENT ENGINE ---------------- */
+function sec_reassess(){
+  return `<div class="card"><h2><span class="idx">Y1</span> Reassessment Schedule <span style="font-weight:400;font-size:11px;color:var(--ink-soft);">(auto-generated from clinical state – edit as needed)</span></h2>
+    <div class="note">Based on entered data, the app suggests when key reassessments are due. Times are estimates – adjust to your clinical context. Items marked ⚠ are safety-critical.</div>
+    <div id="reassessBox"></div>
+    <div class="field" style="margin-top:10px;"><label>Additional reassessment notes</label><textarea id="reassess_notes" placeholder="e.g. Repeat CT head in 6h if GCS does not improve"></textarea></div>
+  </div>`; }
+
+function generateReassessments(){
+  const items = [];
+  const now = new Date();
+  const addTime = (h, m) => { const d = new Date(now.getTime() + (h*60+m)*60000); return d.toTimeString().slice(0,5); };
+
+  // ABG reassessment
+  const ph = +val('abg_ph');
+  if(ph > 0 && ph < 7.20) items.push({task:'Repeat ABG', when:'30–60 min', time:addTime(0,45), critical:true, reason:'Severe acidemia (pH '+ph+')'});
+  else if(ph > 0 && ph < 7.30) items.push({task:'Repeat ABG', when:'1–2 h', time:addTime(1,30), critical:false, reason:'Acidemia (pH '+ph+')'});
+
+  // Lactate reassessment
+  const lac = +val('l_lac');
+  if(lac > 4) items.push({task:'Repeat lactate', when:'2 h', time:addTime(2,0), critical:true, reason:'Lactate '+lac+' mmol/L – assess clearance'});
+  else if(lac > 2) items.push({task:'Repeat lactate', when:'4–6 h', time:addTime(4,0), critical:false, reason:'Lactate '+lac+' mmol/L'});
+
+  // Hemodynamic reassessment after fluids
+  const fluidVol = +val('ord_fluid_vol');
+  const fluidResp = getChipValue('fluidresp');
+  if(fluidVol > 0 && fluidResp !== 'Improved') items.push({task:'Hemodynamic reassessment', when:'30–60 min post-bolus', time:addTime(0,45), critical:true, reason:'Post-fluid bolus '+fluidVol+'mL – response: '+(fluidResp||'not assessed')});
+
+  // Vasopressor reassessment
+  const pressor = getChipValue('pressor');
+  if(pressor && pressor !== 'None') items.push({task:'Vasopressor titration check', when:'15–30 min', time:addTime(0,20), critical:true, reason:pressor+' active – reassess MAP target'});
+
+  // Post-intubation ABG
+  const airway = getChipValue('airway');
+  const oxy = getChipValue('oxy');
+  if(oxy === 'Invasive MV' || airway === 'Intubated') items.push({task:'Post-intubation ABG', when:'30 min after setup', time:addTime(0,30), critical:true, reason:'Verify ventilation after intubation'});
+
+  // AKI reassessment
+  const cr = +val('l_cr');
+  if(cr > 150) items.push({task:'Renal reassessment (U&E, urine output)', when:'6–12 h', time:addTime(6,0), critical:false, reason:'Creatinine '+cr+' µmol/L – monitor AKI trajectory'});
+
+  // Sedation holiday / SAT
+  if(oxy === 'Invasive MV') items.push({task:'Daily SAT/SBT assessment', when:'Next morning round', time:'06:00', critical:false, reason:'Ventilated patient – daily sedation interruption + spontaneous breathing trial'});
+
+  // Antibiotic review
+  if(selectedAbx.size > 0) items.push({task:'Antibiotic review (48–72h)', when:'48 h', time:addTime(48,0), critical:false, reason:'De-escalation / stop review per stewardship'});
+
+  // VTE reassessment
+  items.push({task:'VTE risk reassessment', when:'24 h', time:addTime(24,0), critical:false, reason:'Daily VTE prophylaxis review'});
+
+  // Glucose check
+  items.push({task:'Glucose check', when:'1–4 h (if insulin)', time:addTime(2,0), critical:false, reason:'Glycemic monitoring per protocol'});
+
+  // CAM-ICU
+  items.push({task:'CAM-ICU delirium screen', when:'Each shift (q8–12h)', time:addTime(8,0), critical:false, reason:'Delirium screening per PADIS guidelines'});
+
+  return items;
+}
+
+function renderReassessments(){
+  const box = document.getElementById('reassessBox');
+  if(!box) return;
+  const items = generateReassessments();
+  if(!items.length){ box.innerHTML='<div class="note">No reassessments auto-generated. Enter clinical data (ABG, lactate, vitals, orders) to trigger suggestions.</div>'; return; }
+  box.innerHTML = items.map((it,i)=>`<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid #eef1f1;${it.critical?'background:#fdf3e3;margin:0 -8px;padding:8px;border-radius:6px;':''}">
+    <div style="flex:1;">
+      <div style="font-weight:600;font-size:13px;">${it.critical?'\u26A0 ':'\u23F0 '}${esc(it.task)}</div>
+      <div style="font-size:12px;color:var(--ink-soft);">${esc(it.reason)}</div>
+    </div>
+    <div style="text-align:right;flex-shrink:0;">
+      <div style="font-family:var(--mono);font-weight:700;font-size:14px;color:${it.critical?'var(--red)':'var(--teal)'};">${esc(it.when)}</div>
+      <div style="font-size:11px;color:var(--ink-soft);">by ~${esc(it.time)}</div>
+    </div>
+  </div>`).join('');
+}
+
 function trajectInputHandlers(){
   ['0h','2h','4h','6h','12h'].forEach(t=>{
     ['tr_map_'+t,'tr_pressor_'+t,'tr_lactate_'+t,'tr_ph_'+t,'tr_pao2_'+t,'tr_uo_'+t].forEach(id=>{
@@ -796,7 +882,7 @@ const SECTION_FN = {
   id:sec_id, dx:sec_dx, hist:sec_hist, exam:sec_exam, labs:sec_labs,
   scores:sec_scores, orders:sec_orders, ethics:sec_ethics,
   plan:sec_plan, bundle:sec_bundle, traject:sec_traject,
-  sbar:sec_sbar, sign:sec_sign
+  sbar:sec_sbar, reassess:sec_reassess, sign:sec_sign
 };
 function buildTabs(){ const bar=document.getElementById('tabbar'); bar.innerHTML=TABS.map((t,i)=>`<button class="tab-btn${i===0?' active':''}" data-id="${t.id}" onclick="showTab('${t.id}')">${t.label}</button>`).join(''); }
 function buildSections(){ const main=document.getElementById('main'); main.innerHTML=TABS.map((t,i)=>`<section class="section${i===0?' active':''}" id="sec_${t.id}">${SECTION_FN[t.id]()}</section>`).join(''); }
@@ -808,6 +894,7 @@ function showTab(id){
   if(id==='scores'){calcSOFA();calcAPACHE();calcQSOFA();calcRenalDosing();}
   if(id==='labs'){acidBase();}
   if(id==='traject'){calcTrajectory();}
+  if(id==='reassess'){renderReassessments();}
 }
 
 /* ---------------- CALCULATORS (with safety hardening) ---------------- */
@@ -1012,6 +1099,21 @@ function validateClinicalSafety(){
   if(warnings.length){
     showToast('\u26A0\uFE0F '+warnings.length+' warning(s) – check exported note');
   }
+  // Internal consistency checks
+  const oxySupport2 = getChipValue('oxy');
+  const airwayStatus = getChipValue('airway');
+  if(oxySupport2==='Invasive MV' && airwayStatus && airwayStatus!=='Intubated' && airwayStatus!=='Tracheostomy'){
+    showToast('\u26A0\uFE0F Invasive MV but airway is '+airwayStatus+' \u2013 verify');
+  }
+  const vtePlt = getChipValue('vte_plt');
+  if(getChipValue('vtemethod')==='LMWH' && vtePlt && vtePlt.startsWith('<25k')){
+    showSafetyModal(['LMWH with platelets <25k \u2013 use mechanical ppx'], [], false);
+    return false;
+  }
+  const goals = getChipValue('goals');
+  if(goals==='Comfort-focused' && (getChipValue('pressor')!=='None' || oxySupport2==='Invasive MV')){
+    showToast('\u26A0\uFE0F Comfort goals + invasive interventions \u2013 clarify intent');
+  }
   return true;
 }
 function showSafetyModal(errors, warnings, canProceed){
@@ -1115,7 +1217,11 @@ const CHIP_GROUPS = [
   ['RenalFluid','Renal/Fluid','Plan'],['GINutrition','GI/Nutrition','Plan'],['Infection','Infection','Plan'],['VTESkinMobility','VTE/Skin/Mobility','Plan'],
   ['ventpreset','Ventilator scenario','Vent'],
   ['mtp','MTP status','Orders'],
-  ['txa','Tranexamic acid','Orders']
+  ['txa','Tranexamic acid','Orders'],
+  ['vte_plt','Platelet count (VTE)','Orders'],
+  ['vte_bleed','Bleeding risk (VTE)','Orders'],
+  ['nutri_route','Nutrition route','Orders'],
+  ['nutri_risk','Nutrition risk','Orders']
 ];
 const SECTION_ORDER = ['Identification','Diagnosis','History','Vitals','Labs','ABG','Imaging','Scores','Orders','Ethics','Plan','Vent','Transfusion','Trajectory','Timestamps','SBAR','Prognosis','Signatures'];
 const SECTION_TITLES = {
@@ -1313,7 +1419,7 @@ const icuAutoSave = (typeof AutoSave !== 'undefined') ? AutoSave.attach('icu_adm
     }
   },
   afterRestore: ()=>{
-    calcMAP(); calcBMI(); calcGCS(); calcPF(); calcQSOFA(); calcSOFA(); calcAPACHE(); calcRenalDosing(); acidBase(); calcTrajectory(); renderMedRecon();
+    calcMAP(); calcBMI(); calcGCS(); calcPF(); calcQSOFA(); calcSOFA(); calcAPACHE(); calcRenalDosing(); acidBase(); calcTrajectory(); renderMedRecon(); renderReassessments();
     renderICUCriteriaFlag(); renderVentSuggestion(); updateProgress(); updateStickyBar(); showToast('Restored session');
   }
 }) : null;
@@ -1322,7 +1428,7 @@ const icuAutoSave = (typeof AutoSave !== 'undefined') ? AutoSave.attach('icu_adm
 document.addEventListener('input', updateProgress);
 buildTabs(); buildSections();
 (function setNow(){ const now=new Date(); const pad=n=>String(n).padStart(2,'0'); const dEl=document.getElementById('a_date'); if(dEl)dEl.value=`${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`; const tEl=document.getElementById('a_time'); if(tEl)tEl.value=`${pad(now.getHours())}:${pad(now.getMinutes())}`; })();
-calcQSOFA(); calcRenalDosing(); acidBase(); renderMedRecon(); updateProgress(); updateStickyBar();
+calcQSOFA(); calcRenalDosing(); acidBase(); renderMedRecon(); renderReassessments(); updateProgress(); updateStickyBar();
 trajectInputHandlers();
 if(icuAutoSave)icuAutoSave.restore();
 if('serviceWorker' in navigator){navigator.serviceWorker.register('../../sw.js').catch(()=>{});}
