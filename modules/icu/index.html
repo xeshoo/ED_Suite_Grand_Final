@@ -924,8 +924,7 @@ function validateClinicalSafety(){
     return false;
   }
   if(warnings.length){
-    showSafetyModal(errors, warnings, true);
-    return false;
+    showToast('\u26A0\uFE0F '+warnings.length+' warning(s) – check exported note');
   }
   return true;
 }
