@@ -293,7 +293,12 @@ function sec_hist(){ return `
     <label>Past medical history</label>
     <div class="chip-group" data-multi="1" id="grp_pmh">${['HTN','DM','IHD','Heart failure','AF','COPD/Asthma','CKD','Cirrhosis','Malignancy','Immunosuppressed','Stroke/TIA','Seizure disorder','Substance use'].map(o=>`<span class="chip" data-group="pmh" onclick="toggleChip(this)">${o}</span>`).join('')}</div>
     <div class="row"><div class="field"><label>Allergies</label><input type="text" id="h_allergy" placeholder="NKDA or specify"></div>
-    <div class="field"><label>Current medications (free text, or use Medication Reconciliation later)</label><input type="text" id="h_meds"></div></div>
+    <div class="field"><label>Current medications (free text)</label><input type="text" id="h_meds"></div></div>
+  </div>
+  <div class="card"><h2><span class="idx">E1</span> Medication Reconciliation <span style="font-weight:400;font-size:11px;color:var(--ink-soft);">(structured home meds – critical drugs highlighted)</span></h2>
+    <div class="note">Enter home medications below. Critical ICU drugs are pre-listed. Mark Continue / Hold / Stop with reason.</div>
+    <div id="medReconBox"></div>
+    <div class="field" style="margin-top:8px;"><label>Add medication</label><div style="display:flex;gap:6px;"><input type="text" id="medNewName" placeholder="e.g. Amlodipine 5mg" style="flex:2;"><input type="text" id="medNewDose" placeholder="dose/frequency" style="flex:1;"><button type="button" onclick="addMedRecon()" style="flex:0 0 auto;padding:8px 14px;border-radius:7px;border:1px solid var(--teal);background:#fff;color:var(--teal-d);font-weight:700;">+ Add</button></div></div>
   </div>`; }
 
 function sec_exam(){ return `
@@ -374,6 +379,63 @@ function addCustomLab(){ const name=val('clNewName').trim(); const unit=val('clN
 function removeCustomLab(id){ customLabs=customLabs.filter(c=>c.id!==id); renderCustomLabs(); updateProgress(); }
 function renderCustomLabs(){ const box=document.getElementById('customLabsBox'); if(!box)return; if(!customLabs.length){box.innerHTML='';return;} box.innerHTML=`<table class="mini"><thead><tr><th>Parameter</th><th>Unit</th><th>Value</th><th></th></tr></thead><tbody>${customLabs.map(c=>`<tr><td>${esc(c.name)}</td><td>${esc(c.unit)}</td><td><input type="number" step="0.01" id="${c.id}_val" oninput="updateProgress()"></td><td><span onclick="removeCustomLab('${c.id}')" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();removeCustomLab('${c.id}')}" style="cursor:pointer;color:var(--red);font-weight:800;padding:0 4px;">&times;</span></td></tr>`).join('')}</tbody></table>`; }
 function collectCustomLabs(){ return customLabs.map(c=>{ const v=val(c.id+'_val'); if(!v||v.trim()==='')return null; return [c.name+(c.unit?` (${c.unit})`:''),v]; }).filter(Boolean); }
+
+/* ---------------- MEDICATION RECONCILIATION ---------------- */
+const CRITICAL_MEDS = [
+  {name:'Insulin', dose:'—', flag:true},
+  {name:'Metformin', dose:'—', flag:true},
+  {name:'ACE inhibitor / ARB', dose:'—', flag:true},
+  {name:'Beta-blocker', dose:'—', flag:true},
+  {name:'Diuretic', dose:'—', flag:true},
+  {name:'Antiplatelet (aspirin/clopidogrel)', dose:'—', flag:true},
+  {name:'Anticoagulant (warfarin/DOAC)', dose:'—', flag:true},
+  {name:'SGLT2 inhibitor', dose:'—', flag:true},
+  {name:'Corticosteroid', dose:'—', flag:true},
+  {name:'Antiepileptic', dose:'—', flag:true},
+  {name:'Opioid (chronic)', dose:'—', flag:true},
+  {name:'Immunosuppressant', dose:'—', flag:true}
+];
+let medReconList = CRITICAL_MEDS.map((m,i)=>({...m, id:'med_'+i, action:'', reason:''}));
+let medReconCustom = [];
+function addMedRecon(){
+  const name=val('medNewName').trim(); const dose=val('medNewDose').trim();
+  if(!name)return;
+  medReconCustom.push({id:'med_c_'+Date.now(), name, dose, flag:false, action:'', reason:''});
+  setVal('medNewName',''); setVal('medNewDose','');
+  renderMedRecon(); document.getElementById('medNewName').focus();
+}
+function removeMedRecon(id){
+  medReconCustom=medReconCustom.filter(m=>m.id!==id);
+  renderMedRecon(); updateProgress();
+}
+function renderMedRecon(){
+  const box=document.getElementById('medReconBox'); if(!box)return;
+  const all=[...medReconList, ...medReconCustom];
+  box.innerHTML='<table class="mini"><thead><tr><th>Medication</th><th>Home Dose</th><th>Action</th><th>Reason if Hold/Stop</th><th></th></tr></thead><tbody>'+
+    all.map(m=>'<tr style="'+(m.flag?'background:#fdf3e3;':'')+'">'+
+      '<td style="font-weight:'+(m.flag?'700':'400')+';">'+esc(m.name)+(m.flag?' ⚠':'')+'</td>'+
+      '<td><input type="text" id="'+m.id+'_dose" value="'+esc(m.dose)+'" style="padding:4px 6px;font-size:13px;min-width:80px;"></td>'+
+      '<td><select id="'+m.id+'_action" style="padding:4px 6px;font-size:13px;" onchange="document.getElementById(\''+m.id+'_reason\').style.display=(this.value===\'Hold\'||this.value===\'Stop\')?\'block\':\'none\';updateProgress();">'+
+        '<option value="">—</option><option value="Continue">Continue</option><option value="Hold">Hold</option><option value="Stop">Stop</option></select></td>'+
+      '<td><input type="text" id="'+m.id+'_reason" placeholder="reason" style="display:none;padding:4px 6px;font-size:13px;min-width:100px;"></td>'+
+      '<td>'+(m.flag?'':'<span onclick="removeMedRecon(\''+m.id+'\')" style="cursor:pointer;color:var(--red);font-weight:800;">&times;</span>')+'</td>'+
+    '</tr>').join('')+
+  '</tbody></table>';
+}
+function collectMedRecon(){
+  const all=[...medReconList, ...medReconCustom];
+  return all.map(m=>{
+    const action=val(m.id+'_action');
+    const dose=val(m.id+'_dose');
+    const reason=val(m.id+'_reason');
+    if(!action && !dose) return null;
+    let line=m.name;
+    if(dose && dose!==m.dose) line+=' '+dose;
+    if(action) line+=' → '+action;
+    if(reason) line+=' ('+reason+')';
+    return line;
+  }).filter(Boolean);
+}
 
 /* ---------------- ACID‑BASE ANALYZER ---------------- */
 function acidBase(){
@@ -492,6 +554,18 @@ function sec_orders(){ return `
     <div class="field"><label>Lactate repeat time</label><input type="time" id="ord_lactate_repeat"></div></div>
     <div class="field"><label>Source evaluation plan</label><textarea id="ord_source_eval" placeholder="e.g. CT abdomen, echocardiogram"></textarea></div>
     <div class="note">Antibiotics are ordered in the Management Plan tab – this section ensures the bundle is documented.</div>
+  </div>
+  <div class="card"><h2><span class="idx">Q1</span> Critical Intervention Timestamps <span style="font-weight:400;font-size:11px;color:var(--ink-soft);">(ordered → started → completed → response)</span></h2>
+    <div class="note">Document timing of key interventions. Essential for sepsis bundle compliance and quality audit.</div>
+    <table class="mini"><thead><tr><th>Intervention</th><th>Ordered</th><th>Started</th><th>Completed</th><th>Response</th></tr></thead><tbody>
+      ${['Antibiotics','Fluid bolus','Vasopressor','Intubation','Central line','Arterial line','Cultures','Source control','Repeat ABG','Repeat lactate'].map((item,i)=>`<tr>
+        <td style="white-space:nowrap;font-weight:600;">${item}</td>
+        <td><input type="time" id="ts_ord_${i}" style="padding:4px 6px;font-size:13px;"></td>
+        <td><input type="time" id="ts_start_${i}" style="padding:4px 6px;font-size:13px;"></td>
+        <td><input type="time" id="ts_done_${i}" style="padding:4px 6px;font-size:13px;"></td>
+        <td><input type="text" id="ts_resp_${i}" placeholder="response" style="padding:4px 6px;font-size:13px;min-width:80px;"></td>
+      </tr>`).join('')}
+    </tbody></table>
   </div>
   <div class="card"><h2><span class="idx">R</span> Ongoing ICU Orders</h2>
     <div class="subhead">Ventilator (if Invasive MV selected)</div>
@@ -655,10 +729,11 @@ function sec_traject(){
     <td><input type="number" step="0.01" id="tr_ph_${t}" placeholder="pH"></td>
     <td><input type="number" step="0.1" id="tr_pao2_${t}" placeholder="PaO₂"></td>
     <td><input type="number" step="10" id="tr_uo_${t}" placeholder="urine"></td>
+    <td id="tr_sofa_${t}" style="font-family:var(--mono);font-weight:700;color:var(--teal);text-align:center;">—</td>
   </tr>`).join('');
   return `<div class="card"><h2><span class="idx">Y</span> Longitudinal Trajectory</h2>
     <div class="note">Enter serial values to track trend. Overall trajectory will be auto‑classified based on lactate and MAP.</div>
-    <table class="mini"><thead><tr><th>Time</th><th>MAP (mmHg)</th><th>Vasopressor dose</th><th>Lactate</th><th>pH</th><th>PaO₂</th><th>Urine (mL)</th></tr></thead><tbody>${rows}</tbody></table>
+    <table class="mini"><thead><tr><th>Time</th><th>MAP (mmHg)</th><th>Vasopressor dose</th><th>Lactate</th><th>pH</th><th>PaO₂</th><th>Urine</th><th>SOFA (auto)</th></tr></thead><tbody>${rows}</tbody></table>
     <div class="calc-box" style="margin-top:10px;">
       <div class="score-row"><span class="score-label">Trajectory Classification</span><span class="score-val" id="trajectClass" style="font-size:20px;color:var(--amber);">—</span></div>
       <div class="interp" id="trajectDetails"></div>
@@ -873,8 +948,19 @@ function renderICUCriteriaFlag(){ const on=[...document.querySelectorAll('#grp_i
 /* ---------------- VENTILATOR PRESETS ---------------- */
 const VENT_PRESETS = { ards:{label:'ARDS / Lung-Protective',tvLowMult:6,tvHighMult:6,rr:'20‑30/min, permissive hypercapnia if pH≥7.20',peep:'8‑12 cmH₂O (ARDSnet table)',fio2:'Lowest FiO₂ for SpO₂ 88‑95%',ie:'1:1‑1:2',mode:'VC or PRVC'}, copd:{label:'COPD / Asthma',tvLowMult:6,tvHighMult:8,rr:'8‑12/min – avoid auto-PEEP',peep:'≤ intrinsic PEEP (often 0‑5)',fio2:'Lowest FiO₂ for SpO₂ 88‑92%',ie:'1:3‑1:4',mode:'VC or PSV'}, normal:{label:'Normal / Post-op',tvLowMult:6,tvHighMult:8,rr:'12‑16/min',peep:'5',fio2:'30‑40%, titrate to SpO₂ ≥94%',ie:'1:2',mode:'VC, PRVC or SIMV'} };
 function calcIBW(){ const htCm=+val('v_ht'); const sex=val('p_sex'); if(!htCm)return null; const inches=htCm/2.54; if(inches<55)return null; const base=sex==='F'?45.5:50; return +(base+2.3*(inches-60)).toFixed(1); }
-function renderVentSuggestion(){ const box=document.getElementById('ventSuggestBox'); if(!box)return; const chosen=[...document.querySelectorAll('#grp_ventpreset .chip.on')].map(c=>c.textContent)[0]; if(!chosen){box.innerHTML='';return;} const key=chosen.startsWith('ARDS')?'ards':(chosen.startsWith('COPD')?'copd':'normal'); const p=VENT_PRESETS[key]; const ibw=calcIBW(); const tv=ibw?`${Math.round(ibw*p.tvLowMult)}‑${Math.round(ibw*p.tvHighMult)} mL (IBW ${ibw} kg)`:'Enter height & sex for IBW target'; box.innerHTML=`<div class="calc-box"><div class="score-row"><span class="score-label">Suggested – ${esc(p.label)}</span><span onclick="dismissVentSuggestion()" style="cursor:pointer;color:#9db3c2;font-weight:800;padding:0 4px;">&times; Dismiss</span></div><div class="interp">Mode: ${esc(p.mode)}</div><div class="interp">Tidal volume: ${tv}</div><div class="interp">RR: ${esc(p.rr)}</div><div class="interp">PEEP: ${esc(p.peep)}</div><div class="interp">FiO₂: ${esc(p.fio2)}</div><div class="interp">I:E: ${esc(p.ie)}</div></div>`; }
+function renderVentSuggestion(){ const box=document.getElementById('ventSuggestBox'); if(!box)return; const chosen=[...document.querySelectorAll('#grp_ventpreset .chip.on')].map(c=>c.textContent)[0]; if(!chosen){box.innerHTML='';return;} const key=chosen.startsWith('ARDS')?'ards':(chosen.startsWith('COPD')?'copd':'normal'); const p=VENT_PRESETS[key]; const ibw=calcIBW(); const tv=ibw?`${Math.round(ibw*p.tvLowMult)}‑${Math.round(ibw*p.tvHighMult)} mL (IBW ${ibw} kg)`:'Enter height & sex for IBW target'; box.innerHTML=`<div class="calc-box"><div class="score-row"><span class="score-label">Suggested – ${esc(p.label)}</span><span onclick="applyVentPreset('${key}')" style="cursor:pointer;color:var(--teal);font-weight:800;padding:0 8px;font-size:12px;">✅ Apply</span> <span onclick="dismissVentSuggestion()" style="cursor:pointer;color:#9db3c2;font-weight:800;padding:0 4px;">&times; Dismiss</span></div><div class="interp">Mode: ${esc(p.mode)}</div><div class="interp">Tidal volume: ${tv}</div><div class="interp">RR: ${esc(p.rr)}</div><div class="interp">PEEP: ${esc(p.peep)}</div><div class="interp">FiO₂: ${esc(p.fio2)}</div><div class="interp">I:E: ${esc(p.ie)}</div></div>`; }
 function dismissVentSuggestion(){ document.querySelectorAll('#grp_ventpreset .chip').forEach(c=>{c.classList.remove('on');c.classList.remove('crit');}); renderVentSuggestion(); }
+function applyVentPreset(key){
+  const p=VENT_PRESETS[key]; const ibw=calcIBW();
+  const modeEl=document.getElementById('vent_mode');
+  if(modeEl){ const opts=[...modeEl.options]; const match=opts.find(o=>o.text.includes(p.mode.split(' ')[0])); if(match) modeEl.value=match.text; }
+  if(ibw){ setVal('vent_tv', Math.round(ibw*p.tvLowMult)); }
+  const rrMatch=p.rr.match(/(\d+)/); if(rrMatch) setVal('vent_rr', rrMatch[1]);
+  const peepMatch=p.peep.match(/(\d+)/); if(peepMatch) setVal('vent_peep', peepMatch[1]);
+  const fio2Match=p.fio2.match(/(\d+)/); if(fio2Match) setVal('vent_fio2', fio2Match[1]);
+  setVal('vent_ie', p.ie.split('\u2013')[0]||p.ie.split('-')[0]||'1:2');
+  showToast('Ventilator settings applied \u2013 review and adjust');
+}
 
 /* ---------------- VALIDATION ENGINE (CRITICAL) ---------------- */
 function validateClinicalSafety(){
@@ -1031,14 +1117,15 @@ const CHIP_GROUPS = [
   ['mtp','MTP status','Orders'],
   ['txa','Tranexamic acid','Orders']
 ];
-const SECTION_ORDER = ['Identification','Diagnosis','History','Vitals','Labs','ABG','Imaging','Scores','Orders','Ethics','Plan','Vent','Transfusion','Trajectory','SBAR','Prognosis','Signatures'];
+const SECTION_ORDER = ['Identification','Diagnosis','History','Vitals','Labs','ABG','Imaging','Scores','Orders','Ethics','Plan','Vent','Transfusion','Trajectory','Timestamps','SBAR','Prognosis','Signatures'];
 const SECTION_TITLES = {
   Identification:'Patient & Admission', Diagnosis:'Diagnosis', History:'History',
   Vitals:'Vitals & Exam', Labs:'Investigations', ABG:'Arterial Blood Gas',
   Imaging:'Imaging', Scores:'Severity Scores', Orders:'Resuscitation & Orders',
   Ethics:'Consent / Code / Safety', Plan:'Management Plan', Vent:'Ventilator Settings',
   Transfusion:'Blood Products', Trajectory:'Longitudinal Trajectory',
-  SBAR:'SBAR Handover', Prognosis:'Prognosis', Signatures:'Signatures'
+  SBAR:'SBAR Handover', Prognosis:'Prognosis', Signatures:'Signatures',
+  Timestamps:'Critical Intervention Timestamps'
 };
 
 function collectFilled(){
@@ -1047,8 +1134,15 @@ function collectFilled(){
   FIELD_MAP.forEach(([id,label,section])=>{ const v=val(id); if(v&&v.trim()!=='') add(section,label,v); });
   CHIP_GROUPS.forEach(([grp,label,section])=>{ const chosen=[...document.querySelectorAll(`[data-group="${CSS.escape(grp)}"].chip.on`)].map(c=>c.textContent); if(chosen.length) add(section,label,chosen.join(', ')); });
   collectCustomLabs().forEach(([label,value])=>add('Labs',label,value));
+  collectMedRecon().forEach(line=>add('History','Med recon',line));
   collectSelectedAbx().forEach(line=>add('Plan',line,line));
   // Bundle
+  // Timestamps
+  const tsItems=['Antibiotics','Fluid bolus','Vasopressor','Intubation','Central line','Arterial line','Cultures','Source control','Repeat ABG','Repeat lactate'];
+  tsItems.forEach((item,i)=>{
+    const ord=val('ts_ord_'+i), start=val('ts_start_'+i), done=val('ts_done_'+i), resp=val('ts_resp_'+i);
+    if(ord||start||done||resp) add('Timestamps', item, [ord?'Ordered '+ord:'', start?'Started '+start:'', done?'Completed '+done:'', resp?'Response: '+resp:''].filter(Boolean).join(' | '));
+  });
   const bundle = collectBundle();
   bundle.forEach(b=>add('Bundle',b.letter+' – '+b.domain, b.status+': '+b.text));
   return by;
@@ -1208,12 +1302,18 @@ function resetAll(){
 
 /* ---------------- AUTO-SAVE ---------------- */
 const icuAutoSave = (typeof AutoSave !== 'undefined') ? AutoSave.attach('icu_admission_autosave_v2', {
-  extra: ()=> ({ customLabs, selectedAbx: [...selectedAbx] }),
+  extra: ()=> ({ customLabs, selectedAbx: [...selectedAbx], medReconList, medReconCustom }),
   beforeRestore: (data)=>{
-    if(data.extra){ if(Array.isArray(data.extra.customLabs)){ customLabs=data.extra.customLabs; renderCustomLabs(); } if(Array.isArray(data.extra.selectedAbx)){ selectedAbx=new Set(data.extra.selectedAbx); renderAbxList(); } }
+    if(data.extra){
+      if(Array.isArray(data.extra.customLabs)){ customLabs=data.extra.customLabs; renderCustomLabs(); }
+      if(Array.isArray(data.extra.selectedAbx)){ selectedAbx=new Set(data.extra.selectedAbx); renderAbxList(); }
+      if(Array.isArray(data.extra.medReconList)){ medReconList=data.extra.medReconList; }
+      if(Array.isArray(data.extra.medReconCustom)){ medReconCustom=data.extra.medReconCustom; }
+      renderMedRecon();
+    }
   },
   afterRestore: ()=>{
-    calcMAP(); calcBMI(); calcGCS(); calcPF(); calcQSOFA(); calcSOFA(); calcAPACHE(); calcRenalDosing(); acidBase(); calcTrajectory();
+    calcMAP(); calcBMI(); calcGCS(); calcPF(); calcQSOFA(); calcSOFA(); calcAPACHE(); calcRenalDosing(); acidBase(); calcTrajectory(); renderMedRecon();
     renderICUCriteriaFlag(); renderVentSuggestion(); updateProgress(); updateStickyBar(); showToast('Restored session');
   }
 }) : null;
@@ -1222,7 +1322,7 @@ const icuAutoSave = (typeof AutoSave !== 'undefined') ? AutoSave.attach('icu_adm
 document.addEventListener('input', updateProgress);
 buildTabs(); buildSections();
 (function setNow(){ const now=new Date(); const pad=n=>String(n).padStart(2,'0'); const dEl=document.getElementById('a_date'); if(dEl)dEl.value=`${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`; const tEl=document.getElementById('a_time'); if(tEl)tEl.value=`${pad(now.getHours())}:${pad(now.getMinutes())}`; })();
-calcQSOFA(); calcRenalDosing(); acidBase(); updateProgress(); updateStickyBar();
+calcQSOFA(); calcRenalDosing(); acidBase(); renderMedRecon(); updateProgress(); updateStickyBar();
 trajectInputHandlers();
 if(icuAutoSave)icuAutoSave.restore();
 if('serviceWorker' in navigator){navigator.serviceWorker.register('../../sw.js').catch(()=>{});}
