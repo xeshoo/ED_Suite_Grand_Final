@@ -896,50 +896,56 @@ function validateClinicalSafety(){
   if(!code) errors.push('Code status not selected');
   // Vitals
   if(!val('v_hr')||!val('v_sbp')||!val('v_dbp')||!val('v_rr')) errors.push('Vital signs (HR, BP, RR) incomplete');
-  // GCS
-  const gcs=document.getElementById('gcsTotal'); if(gcs && gcs.textContent==='15' && !val('g_e')&&!val('g_v')&&!val('g_m')) warnings.push('GCS appears default – verify');
   // Severe shock
   const mapVal = +((val('v_map')||'').replace(/[^0-9]/g,'')) || null;
   const lactate = +val('l_lac') || 0;
   const pressorSelected = getChipValue('pressor')!=='None' && getChipValue('pressor')!=='';
   if((mapVal && mapVal<65) || lactate>4){
     if(!pressorSelected) errors.push('Severe shock (MAP<65 or lactate>4) without vasopressor order');
-    if(!val('ord_pressor_dose')) warnings.push('Vasopressor selected but dose missing');
   }
   // Hypoxemia
   const spo2=+val('v_spo2')||100;
-  const pfRatio=document.getElementById('pfRatio'); const pf = pfRatio && pfRatio.textContent!=='—' ? +pfRatio.textContent : 300;
+  const pfRatio=document.getElementById('pfRatio'); const pf = pfRatio && pfRatio.textContent!=='\u2014' ? +pfRatio.textContent : 300;
   const oxySupport = getChipValue('oxy');
   if(spo2<90 || (pf<200 && pf!==300)){
-    if(!oxySupport || oxySupport==='Room air') errors.push('Severe hypoxemia without appropriate respiratory support');
-    if(!val('vent_mode') && oxySupport==='Invasive MV') errors.push('Ventilator mode not set for invasive MV');
+    if(!oxySupport || oxySupport==='Room air') errors.push('Severe hypoxemia without respiratory support');
   }
   // Acidemia
   const ph=+val('abg_ph');
   if(ph<7.20 && ph>0){
-    if(!val('ord_fluid_vol') && !pressorSelected) warnings.push('Severe acidemia – ensure adequate resuscitation and repeat ABG planned');
-  }
-  // Antibiotics
-  if(selectedAbx.size>0){
-    const anyDose = ICU_ANTIBIOTICS.some(ab=>selectedAbx.has(ab.id) && ab.renal(getCurrentCrcl())!==null);
-    if(!anyDose) warnings.push('Antibiotic selected but no renal adjustment/dose shown – verify');
+    if(!pressorSelected) warnings.push('Severe acidemia \u2013 ensure resuscitation and repeat ABG');
   }
   // VTE
   const vte = getChipValue('vtemethod');
   if(!vte) warnings.push('VTE prophylaxis not specified');
-  // SOFA incomplete
-  const sofa=document.getElementById('sofaVal'); if(sofa && sofa.textContent==='Incomplete') warnings.push('SOFA incomplete – missing components');
-  // APACHE incomplete
-  const apache=document.getElementById('apacheVal'); if(apache && apache.textContent==='Incomplete') warnings.push('APACHE II incomplete – missing acute physiology values');
 
   if(errors.length){
-    showToast('❌ Critical items missing: '+errors.join('; '));
+    showSafetyModal(errors, warnings, false);
     return false;
   }
   if(warnings.length){
-    if(!confirm('⚠️ Warnings:\n'+warnings.join('\n')+'\n\nContinue export?')) return false;
+    showSafetyModal(errors, warnings, true);
+    return false;
   }
   return true;
+}
+function showSafetyModal(errors, warnings, canProceed){
+  let existing=document.getElementById('safetyModal');
+  if(existing) existing.remove();
+  const modal=document.createElement('div');
+  modal.id='safetyModal';
+  modal.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:16px;';
+  let html='<div style="background:#fff;border-radius:14px;max-width:420px;width:100%;max-height:80vh;overflow-y:auto;padding:20px;">';
+  html+='<h3 style="margin:0 0 12px;color:var(--red);font-size:16px;">\u26A0\uFE0F Safety Check</h3>';
+  if(errors.length){ html+='<div style="margin-bottom:10px;"><b style="color:var(--red);">Must fix:</b><ul style="margin:4px 0 0 18px;padding:0;">'+errors.map(e=>'<li style="margin:3px 0;font-size:13px;">'+esc(e)+'</li>').join('')+'</ul></div>'; }
+  if(warnings.length){ html+='<div style="margin-bottom:10px;"><b style="color:var(--amber);">Review recommended:</b><ul style="margin:4px 0 0 18px;padding:0;">'+warnings.map(w=>'<li style="margin:3px 0;font-size:13px;">'+esc(w)+'</li>').join('')+'</ul></div>'; }
+  html+='<div style="display:flex;gap:8px;margin-top:14px;">';
+  html+='<button onclick="document.getElementById(\'safetyModal\').remove()" style="flex:1;padding:10px;border-radius:8px;border:1px solid var(--line);background:#fff;font-size:13px;font-weight:600;cursor:pointer;">Cancel</button>';
+  if(canProceed){ html+='<button id="safetyProceedBtn" style="flex:1;padding:10px;border-radius:8px;border:none;background:var(--teal);color:#fff;font-size:13px;font-weight:600;cursor:pointer;">Proceed Anyway</button>'; }
+  html+='</div></div>';
+  modal.innerHTML=html;
+  document.body.appendChild(modal);
+  if(canProceed){ document.getElementById('safetyProceedBtn').onclick=function(){ modal.remove(); _safetyOverride=true; doPrint(); }; }
 }
 
 /* ---------------- PROGRESS & STICKY BAR ---------------- */
@@ -1154,8 +1160,10 @@ function getHwFontLink(){ const fonts=window.ClinicalCalc?ClinicalCalc.HW_FONTS:
 function getHwFontCSS(){ const base=window.ClinicalCalc?ClinicalCalc.handwrittenFontCSS(HW_FONT_CHOICE):"font-family:'Kalam',cursive !important;"; return base+"font-size:17pt;line-height:1.5;"; }
 function toggleMarginPanel(){ const p=document.getElementById('marginPanel'); if(!p)return; p.style.display=(p.style.display==='none'||!p.style.display)?'flex':'none'; }
 function updateMargin(side,v){ const n=parseFloat(v); if(!isNaN(n)&&n>=0&&n<=80) PRINT_MARGINS[side]=n; }
+let _safetyOverride=false;
 function doPrint(){
-  if(!validateClinicalSafety()) return;
+  if(!_safetyOverride && !validateClinicalSafety()) return;
+  _safetyOverride=false;
   const html=generateNoteHTML();
   let iframe=document.getElementById('printIframe');
   if(!iframe){ iframe=document.createElement('iframe'); iframe.id='printIframe'; iframe.style.cssText='position:fixed;width:0;height:0;border:none;left:-9999px;'; document.body.appendChild(iframe); }
@@ -1165,14 +1173,16 @@ function doPrint(){
   if(HW_STYLE&&doc.fonts&&doc.fonts.ready){ doc.fonts.ready.then(triggerPrint).catch(triggerPrint); setTimeout(triggerPrint,1500); } else { setTimeout(triggerPrint,500); }
 }
 function exportWord(){
-  if(!validateClinicalSafety()) return;
+  if(!_safetyOverride && !validateClinicalSafety()) return;
+  _safetyOverride=false;
   if(typeof DocxLite==='undefined'){ showToast('Word export still loading – try again'); return; }
   const html=generateNoteHTML(); const doc=new DOMParser().parseFromString(html,'text/html'); const container=doc.body; const name=(val('p_name')||'patient').replace(/\s+/g,'_');
   showToast('Generating Word document…');
   DocxLite.exportRealDocx(container, PRINT_MARGINS.top, PRINT_MARGINS.left, `ICU_Admission_${name}`, function(ok,err){ if(ok) showToast('Word downloaded'); else showToast('Word export failed – check internet'); });
 }
 function copySummary(){
-  if(!validateClinicalSafety()) return;
+  if(!_safetyOverride && !validateClinicalSafety()) return;
+  _safetyOverride=false;
   const text=buildTextSummary();
   navigator.clipboard.writeText(text).then(()=>showToast('Note copied')).catch(()=>{ const ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); showToast('Note copied'); });
 }
